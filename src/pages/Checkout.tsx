@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { toNumber } from '../lib/utils';
+import { apiService } from '../lib/api';
 
 const Checkout: React.FC = () => {
   const { user } = useAuth();
@@ -59,50 +60,56 @@ const Checkout: React.FC = () => {
     setLoading(true);
 
     try {
-      // TODO: Reemplazar con llamada a Laravel API
-      // const orderResponse = await fetch('/api/orders', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     customer_id: user.id,
-      //     restaurant_id: cartState.restaurant.id,
-      //     total_amount: total,
-      //     delivery_address: deliveryAddress,
-      //     payment_method: paymentMethod,
-      //     notes: notes.trim() || undefined,
-      //     items: cartState.items.map(item => ({
-      //       menu_item_id: item.menu_item.id,
-      //       quantity: item.quantity,
-      //       unit_price: item.menu_item.price,
-      //       subtotal: item.menu_item.price * item.quantity
-      //     }))
-      //   }),
-      // });
+      console.log('Creando pedido...', {
+        restaurant_id: cartState.restaurant.id,
+        delivery_address: deliveryAddress,
+        notes: notes.trim() || undefined,
+        items: cartState.items.map(item => ({
+          food_id: item.menu_item.id,
+          quantity: item.quantity
+        }))
+      });
 
-      // Simular proceso de pedido
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Llamada real al API Laravel
+      const orderData = {
+        restaurant_id: cartState.restaurant.id,
+        delivery_address: deliveryAddress,
+        notes: notes.trim() || undefined,
+        items: cartState.items.map(item => ({
+          food_id: item.menu_item.id,
+          quantity: item.quantity
+        }))
+      };
+
+      const newOrder = await apiService.createOrder(orderData);
+      console.log('Pedido creado exitosamente:', newOrder);
 
       // Clear cart and redirect
       clearCart();
       toast.success('¡Pedido realizado exitosamente!');
       
-      // Simulate payment process
+      // Process payment if needed
       if (paymentMethod === 'mercado_pago') {
-        toast.success('Redirigiendo a Mercado Pago...');
-        // Aquí integrarías con Mercado Pago API
-        setTimeout(() => {
-          navigate('/customer-dashboard');
-        }, 1500);
-      } else {
-        navigate('/customer-dashboard');
+        try {
+          const paymentData = await apiService.createPayment(newOrder.id);
+          toast.success('Redirigiendo a Mercado Pago...');
+          // Redirect to MercadoPago
+          window.location.href = paymentData.init_point;
+          return;
+        } catch (paymentError) {
+          console.error('Error creating payment:', paymentError);
+          toast.error('Error al procesar el pago, pero el pedido fue creado');
+        }
       }
+      
+      // Navigate to dashboard
+      setTimeout(() => {
+        navigate('/customer-dashboard');
+      }, 1000);
 
     } catch (error) {
       console.error('Error placing order:', error);
-      toast.error('Error al realizar el pedido. Inténtalo de nuevo.');
+      toast.error(`Error al realizar el pedido: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }

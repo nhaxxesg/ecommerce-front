@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Order } from '../types';
-import { Clock, Package, CheckCircle, XCircle, MapPin, Phone } from 'lucide-react';
+import { Clock, Package, CheckCircle, XCircle, MapPin, Phone, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { toNumber } from '../lib/utils';
+import { apiService } from '../lib/api';
 
 // Datos de prueba
 const mockOrders: Order[] = [
@@ -42,7 +43,7 @@ const mockOrders: Order[] = [
         food_id: 'menu_1',
         quantity: 2,
         unit_price: 18.90,
-        subtotal: 37.80,
+        total_price: 37.80,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
                   food: {
@@ -75,21 +76,35 @@ const CustomerDashboard: React.FC = () => {
   }, [user]);
 
   const fetchOrders = async () => {
+    if (!user) return;
+    
     try {
-      // TODO: Reemplazar con llamada a Laravel API
-      // const response = await fetch(`/api/customers/${user!.id}/orders`);
-      // const data = await response.json();
+      setLoading(true);
+      console.log('Obteniendo pedidos del usuario...');
       
-      // Simulamos delay de API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Llamada real al API Laravel
+      const ordersData = await apiService.getOrders();
+      console.log('Pedidos obtenidos:', ordersData);
       
-      // Solo mostrar órdenes si el usuario está logueado
-      if (user) {
-        setOrders(mockOrders);
+      // Filtrar solo los pedidos del usuario actual y ordenar por fecha
+      const userOrders = Array.isArray(ordersData) 
+        ? ordersData
+            .filter(order => order.user_id === user.id)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        : [];
+      
+      setOrders(userOrders);
+      
+      if (userOrders.length === 0) {
+        console.log('No se encontraron pedidos para este usuario');
       }
+      
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast.error('Error al cargar los pedidos');
+      toast.error('Error al cargar los pedidos. Mostrando datos de ejemplo.');
+      
+      // Fallback a datos mock en caso de error del API
+      setOrders(mockOrders);
     } finally {
       setLoading(false);
     }
@@ -144,12 +159,24 @@ const CustomerDashboard: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Mis Pedidos
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Revisa el estado de tus pedidos
-          </p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Mis Pedidos
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                Revisa el estado de tus pedidos e historial de entregas
+              </p>
+            </div>
+            <button
+              onClick={fetchOrders}
+              disabled={loading}
+              className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Actualizar</span>
+            </button>
+          </div>
         </div>
 
         {/* Orders */}
@@ -221,7 +248,7 @@ const CustomerDashboard: React.FC = () => {
                               </p>
                             </div>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                              S/ {toNumber(item.subtotal).toFixed(2)}
+                              S/ {toNumber(item.total_price).toFixed(2)}
                             </p>
                           </div>
                         ))}

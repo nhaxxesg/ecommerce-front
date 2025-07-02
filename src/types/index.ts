@@ -67,7 +67,8 @@ export interface OrderItem {
   food_id: string;
   quantity: number;
   unit_price: number;
-  subtotal: number;
+  total_price: number;
+  subtotal?: number; // Para compatibilidad con datos mock
   created_at: string;
   updated_at: string;
   food?: MenuItem;
