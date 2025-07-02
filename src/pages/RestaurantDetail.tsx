@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
+import { Restaurant, MenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import { Restaurant, MenuItem } from '../types';
+import { apiService } from '../lib/api';
+import { formatPrice, toNumber } from '../lib/utils';
 import { 
   Star, 
   Clock, 
@@ -10,117 +12,12 @@ import {
   Phone,
   Plus,
   Minus,
-  ShoppingCart
+  ShoppingCart,
+  ArrowLeft,
+  ChefHat,
+  Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// Datos de prueba
-const mockRestaurants: { [key: string]: Restaurant } = {
-  '1': {
-    id: '1',
-    profile_id: 'profile_1',
-    name: 'Pizza Palace',
-    description: 'Las mejores pizzas artesanales de la ciudad con ingredientes frescos importados directamente de Italia',
-    cuisine_type: 'Italiana',
-    address: 'Av. Principal 123, San Miguel',
-    phone: '987654321',
-    image_url: 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg',
-    delivery_fee: 5.00,
-    minimum_order: 20.00,
-    opening_hours: 'Lun - Dom: 11:00 AM - 11:00 PM',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  '2': {
-    id: '2',
-    profile_id: 'profile_2',
-    name: 'Burger Express',
-    description: 'Hamburguesas gourmet con ingredientes frescos y carne premium',
-    cuisine_type: 'Americana',
-    address: 'Calle Comercio 456, Miraflores',
-    phone: '987654322',
-    image_url: 'https://images.pexels.com/photos/1639557/pexels-photo-1639557.jpeg',
-    delivery_fee: 4.00,
-    minimum_order: 15.00,
-    opening_hours: 'Lun - Dom: 10:00 AM - 10:00 PM',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-};
-
-const mockMenuItems: { [key: string]: MenuItem[] } = {
-  '1': [
-    {
-      id: 'menu_1',
-      restaurant_id: '1',
-      name: 'Pizza Margherita',
-      description: 'Clásica pizza con tomate San Marzano, mozzarella di bufala y albahaca fresca',
-      price: 18.90,
-      category: 'Pizzas',
-      image_url: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg',
-      preparation_time: 25,
-      is_available: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'menu_2',
-      restaurant_id: '1',
-      name: 'Pizza Pepperoni',
-      description: 'Pizza con salsa de tomate, mozzarella y pepperoni premium',
-      price: 22.90,
-      category: 'Pizzas',
-      image_url: 'https://images.pexels.com/photos/2147491/pexels-photo-2147491.jpeg',
-      preparation_time: 25,
-      is_available: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'menu_3',
-      restaurant_id: '1',
-      name: 'Lasagna Bolognesa',
-      description: 'Tradicional lasagna con salsa bolognesa y bechamel casera',
-      price: 24.90,
-      category: 'Pastas',
-      image_url: 'https://images.pexels.com/photos/4079520/pexels-photo-4079520.jpeg',
-      preparation_time: 35,
-      is_available: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ],
-  '2': [
-    {
-      id: 'menu_4',
-      restaurant_id: '2',
-      name: 'Burger Clásica',
-      description: 'Hamburguesa con carne angus, lechuga, tomate, cebolla y papas fritas',
-      price: 16.50,
-      category: 'Hamburguesas',
-      image_url: 'https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg',
-      preparation_time: 20,
-      is_available: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'menu_5',
-      restaurant_id: '2',
-      name: 'Burger BBQ',
-      description: 'Hamburguesa con carne, bacon, queso cheddar, salsa BBQ y aros de cebolla',
-      price: 19.90,
-      category: 'Hamburguesas',
-      image_url: 'https://images.pexels.com/photos/1552641/pexels-photo-1552641.jpeg',
-      preparation_time: 22,
-      is_available: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ]
-};
 
 const RestaurantDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -139,72 +36,81 @@ const RestaurantDetail: React.FC = () => {
   }, [id]);
 
   const fetchRestaurantData = async () => {
+    if (!id) return;
+    
     try {
-      // TODO: Reemplazar con llamada a Laravel API
-      // const response = await fetch(`/api/restaurants/${id}`);
-      // const restaurantData = await response.json();
+      setLoading(true);
       
-      // Simulamos delay de API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const restaurantData = mockRestaurants[id!];
-      if (!restaurantData) {
-        throw new Error('Restaurante no encontrado');
-      }
+      // Cargar datos del restaurante y su menú en paralelo
+      const [restaurantData, menuData] = await Promise.all([
+        apiService.getRestaurant(id),
+        apiService.getRestaurantFoods(id)
+      ]);
       
       setRestaurant(restaurantData);
-
-      // TODO: Reemplazar con llamada a Laravel API
-      // const menuResponse = await fetch(`/api/restaurants/${id}/menu`);
-      // const menuData = await menuResponse.json();
-      
-      const menuData = mockMenuItems[id!] || [];
       setMenuItems(menuData);
 
-      // Initialize quantities
+      // Inicializar cantidades
       const initialQuantities: { [key: string]: number } = {};
       menuData.forEach(item => {
-        initialQuantities[item.id] = 1;
+        initialQuantities[item.id] = 0;
       });
       setQuantities(initialQuantities);
 
     } catch (error) {
       console.error('Error fetching restaurant data:', error);
-      toast.error('Error al cargar la información del restaurante');
+      toast.error('Error al cargar los datos del restaurante');
     } finally {
       setLoading(false);
     }
   };
 
   const categories = [...new Set(menuItems.map(item => item.category))];
-
-  const filteredMenuItems = selectedCategory
+  const filteredItems = selectedCategory 
     ? menuItems.filter(item => item.category === selectedCategory)
     : menuItems;
 
-  const updateQuantity = (itemId: string, change: number) => {
+  const updateQuantity = (itemId: string, newQuantity: number) => {
     setQuantities(prev => ({
       ...prev,
-      [itemId]: Math.max(1, (prev[itemId] || 1) + change)
+      [itemId]: Math.max(0, newQuantity)
     }));
   };
 
-  const handleAddToCart = (menuItem: MenuItem) => {
+  const addToCart = (item: MenuItem) => {
     if (!user) {
       toast.error('Debes iniciar sesión para agregar productos al carrito');
       return;
     }
-    if (user.user_type !== 'customer') {
+    
+    if (user.role !== 'client') {
       toast.error('Solo los clientes pueden agregar productos al carrito');
       return;
     }
+
     if (!restaurant) return;
 
-    const quantity = quantities[menuItem.id] || 1;
-    for (let i = 0; i < quantity; i++) {
-      addItem(menuItem, restaurant);
-    }
+    addItem(item, restaurant);
+    updateQuantity(item.id, quantities[item.id] + 1);
   };
+
+  const getCartItemQuantity = (itemId: string) => {
+    const cartItem = cartState.items.find(item => item.menu_item.id === itemId);
+    return cartItem ? cartItem.quantity : 0;
+  };
+
+
+
+  const getOpeningHours = (restaurant: Restaurant) => {
+    if (restaurant.opening_time && restaurant.closing_time) {
+      return `${restaurant.opening_time} - ${restaurant.closing_time}`;
+    }
+    return restaurant.opening_hours || 'Horario no disponible';
+  };
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
 
   if (loading) {
     return (
@@ -218,12 +124,15 @@ const RestaurantDetail: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Restaurante no encontrado
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            El restaurante que buscas no existe o no está disponible.
-          </p>
+          </h1>
+          <button
+            onClick={() => window.history.back()}
+            className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+          >
+            Volver atrás
+          </button>
         </div>
       </div>
     );
@@ -231,80 +140,83 @@ const RestaurantDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Restaurant Header */}
-      <div className="relative h-64 md:h-80">
+      {/* Header */}
+      <div className="relative">
+        <div className="h-64 bg-gradient-to-r from-primary-600 to-primary-800">
         <img
-          src={restaurant.image_url || 'https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg'}
+            src={restaurant.image_url || 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg'}
           alt={restaurant.name}
-          className="w-full h-full object-cover"
+            className="w-full h-full object-cover opacity-50"
         />
+        </div>
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+        
+        {/* Back button */}
+        <button
+          onClick={() => window.history.back()}
+          className="absolute top-4 left-4 bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+        >
+          <ArrowLeft className="h-6 w-6 text-gray-900 dark:text-white" />
+        </button>
+
+        {/* Restaurant info overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent text-white p-6">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              {restaurant.name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-sm">
+            <h1 className="text-3xl font-bold mb-2">{restaurant.name}</h1>
+            <p className="text-lg opacity-90 mb-4">{restaurant.description}</p>
+            
+            <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center">
-                <Star className="h-4 w-4 mr-1 text-yellow-400" />
-                <span>4.5</span>
+                <ChefHat className="h-4 w-4 mr-2" />
+                <span>{restaurant.cuisine_type}</span>
               </div>
               <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-1" />
+                <MapPin className="h-4 w-4 mr-2" />
                 <span>{restaurant.address}</span>
               </div>
               <div className="flex items-center">
-                <Phone className="h-4 w-4 mr-1" />
+                <Clock className="h-4 w-4 mr-2" />
+                <span>{getOpeningHours(restaurant)}</span>
+              </div>
+              {restaurant.phone && (
+                <div className="flex items-center">
+                  <Phone className="h-4 w-4 mr-2" />
                 <span>{restaurant.phone}</span>
+                </div>
+              )}
+              <div className="flex items-center">
+                <Star className="h-4 w-4 mr-1 text-yellow-400 fill-current" />
+                <span>4.5 (150+ reseñas)</span>
               </div>
             </div>
+            
+            {restaurant.delivery_fee && (
+              <div className="mt-4 flex items-center text-sm">
+                <Truck className="h-4 w-4 mr-2" />
+                <span>Delivery {formatPrice(restaurant.delivery_fee)}</span>
+                {restaurant.minimum_order && (
+                  <span className="ml-4">Pedido mínimo {formatPrice(restaurant.minimum_order)}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Restaurant Info */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                Descripción
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                {restaurant.description || 'Deliciosa comida preparada con los mejores ingredientes.'}
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                Información de Entrega
-              </h3>
-              <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <p>Costo de delivery: S/ {restaurant.delivery_fee.toFixed(2)}</p>
-                <p>Pedido mínimo: S/ {restaurant.minimum_order.toFixed(2)}</p>
-                <p>Tiempo estimado: 30-45 min</p>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                Horarios
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {restaurant.opening_hours || 'Lun - Dom: 10:00 AM - 10:00 PM'}
-              </p>
-            </div>
-          </div>
-        </div>
-
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Menu */}
+          <div className="flex-1">
         {/* Category Filter */}
         {categories.length > 1 && (
-          <div className="mb-8">
+              <div className="mb-6">
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedCategory('')}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   selectedCategory === ''
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 Todos
@@ -316,7 +228,7 @@ const RestaurantDetail: React.FC = () => {
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     selectedCategory === category
                       ? 'bg-primary-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   {category}
@@ -327,60 +239,91 @@ const RestaurantDetail: React.FC = () => {
         )}
 
         {/* Menu Items */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredMenuItems.map((item) => (
-            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-              <div className="md:flex">
-                <div className="md:w-48 h-48 md:h-auto">
+            <div className="space-y-6">
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-500 dark:text-gray-400">
+                    {menuItems.length === 0 
+                      ? 'Este restaurante aún no tiene platos disponibles.'
+                      : 'No hay platos en esta categoría.'
+                    }
+                  </div>
+                </div>
+              ) : (
+                filteredItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="md:w-32 md:h-32 w-full h-48 flex-shrink-0">
                   <img
                     src={item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
                     alt={item.name}
-                    className="w-full h-full object-cover"
+                          className="w-full h-full object-cover rounded-lg"
                   />
                 </div>
-                <div className="p-6 flex-1">
-                  <div className="flex items-start justify-between">
+                      
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {item.name}
                       </h3>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                          <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                            {formatPrice(item.price)}
+                          </span>
+                        </div>
+                        
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
                         {item.description}
                       </p>
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                            {item.preparation_time && (
+                              <>
                         <Clock className="h-4 w-4 mr-1" />
                         <span>{item.preparation_time} min</span>
+                              </>
+                            )}
+                            <span className={`ml-3 px-2 py-1 rounded-full text-xs ${
+                              item.is_available 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            }`}>
+                              {item.is_available ? 'Disponible' : 'No disponible'}
+                            </span>
                       </div>
-                    </div>
-                    <div className="text-right ml-4">
-                      <div className="text-xl font-bold text-primary-600 dark:text-primary-400 mb-2">
-                        S/ {item.price.toFixed(2)}
-                      </div>
-                      {user?.user_type === 'customer' && (
-                        <div className="space-y-2">
-                          <div className="flex items-center">
+                          
+                          {user?.role === 'client' && (
+                            <div className="flex items-center gap-3">
+                              {getCartItemQuantity(item.id) > 0 && (
+                                <div className="flex items-center gap-2">
                             <button
-                              onClick={() => updateQuantity(item.id, -1)}
-                              className="p-1 border border-gray-300 dark:border-gray-600 rounded-l-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    onClick={() => updateQuantity(item.id, quantities[item.id] - 1)}
+                                    className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                             >
                               <Minus className="h-4 w-4" />
                             </button>
-                            <span className="px-3 py-1 border-t border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm">
-                              {quantities[item.id] || 1}
+                                  <span className="w-8 text-center font-medium">
+                                    {getCartItemQuantity(item.id)}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.id, 1)}
-                              className="p-1 border border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    onClick={() => addToCart(item)}
+                                    className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 transition-colors"
                             >
                               <Plus className="h-4 w-4" />
                             </button>
                           </div>
+                              )}
+                              
                           <button
-                            onClick={() => handleAddToCart(item)}
-                            className="w-full btn-primary text-sm py-2 px-4 rounded-lg flex items-center justify-center"
+                                onClick={() => addToCart(item)}
+                                disabled={!item.is_available}
+                                className="bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
                           >
-                            <ShoppingCart className="h-4 w-4 mr-2" />
-                            Agregar
+                                <Plus className="h-4 w-4" />
+                                {getCartItemQuantity(item.id) === 0 ? 'Agregar' : 'Agregar más'}
                           </button>
                         </div>
                       )}
@@ -388,17 +331,59 @@ const RestaurantDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Cart Sidebar */}
+          {cartState.items.length > 0 && (
+            <div className="lg:w-80">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 sticky top-24">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShoppingCart className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                    Tu Pedido
+                  </h3>
+                </div>
+                
+                <div className="space-y-3 mb-4">
+                  {cartState.items.map((cartItem) => (
+                    <div key={cartItem.menu_item.id} className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                          {cartItem.menu_item.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatPrice(cartItem.menu_item.price)} x {cartItem.quantity}
+                        </p>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {formatPrice(cartItem.menu_item.price * cartItem.quantity)}
+                      </span>
             </div>
           ))}
         </div>
 
-        {menuItems.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              Este restaurante no tiene menú disponible en este momento.
-            </p>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <div className="flex justify-between items-center font-semibold text-lg">
+                    <span className="text-gray-900 dark:text-white">Total:</span>
+                    <span className="text-primary-600 dark:text-primary-400">
+                      {formatPrice(cartState.total)}
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => window.location.href = '/checkout'}
+                    className="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                  >
+                    Proceder al Checkout
+                  </button>
+                </div>
+              </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

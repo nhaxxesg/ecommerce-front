@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Restaurant, MenuItem, Order } from '../types';
+import { apiService } from '../lib/api';
+import { formatPrice, toNumber } from '../lib/utils';
 import { 
   Plus, 
   Edit, 
@@ -22,6 +24,40 @@ const RestaurantDashboard: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'orders' | 'settings'>('overview');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showFoodForm, setShowFoodForm] = useState(false);
+  const [editingFood, setEditingFood] = useState<MenuItem | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    cuisine_type: '',
+    address: '',
+    phone: '',
+    email: '',
+    opening_time: '10:00',
+    closing_time: '22:00',
+    image_url: ''
+  });
+  const [restaurantSettings, setRestaurantSettings] = useState({
+    name: '',
+    description: '',
+    cuisine_type: '',
+    address: '',
+    phone: '',
+    email: '',
+    opening_time: '',
+    closing_time: '',
+    image_url: ''
+  });
+  const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [foodFormData, setFoodFormData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    category: '',
+    image_url: '',
+    preparation_time: '30'
+  });
 
   useEffect(() => {
     if (user) {
@@ -29,35 +65,34 @@ const RestaurantDashboard: React.FC = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (restaurant) {
+      initializeRestaurantSettings();
+    }
+  }, [restaurant]);
+
   const fetchRestaurantData = async () => {
     try {
-      // TODO: Reemplazar con llamada a Laravel API
-      // const response = await fetch(`/api/restaurants/profile/${user!.id}`);
-      // const data = await response.json();
+      setLoading(true);
       
-      // Simulamos delay de API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Obtener los restaurantes del usuario propietario
+      const restaurants = await apiService.getMyRestaurants();
       
-      // Para usuarios tipo restaurant, mostrar datos mock
-      if (user?.user_type === 'restaurant') {
-        // Datos de prueba para restaurante
-        setRestaurant({
-          id: '1',
-          profile_id: user.id,
-          name: 'Mi Restaurante',
-          description: 'Descripción de mi restaurante',
-          cuisine_type: 'Peruana',
-          address: 'Av. Ejemplo 123',
-          phone: '987654321',
-          image_url: 'https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg',
-          delivery_fee: 5.00,
-          minimum_order: 20.00,
-          opening_hours: 'Lun - Dom: 10:00 AM - 10:00 PM',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      if (restaurants.length > 0) {
+        const myRestaurant = restaurants[0]; // Por ahora tomamos el primero
+        setRestaurant(myRestaurant);
+      
+        // Cargar menú y pedidos en paralelo
+        const [menuData, ordersData] = await Promise.all([
+          apiService.getRestaurantFoods(myRestaurant.id),
+          apiService.getRestaurantOrders()
+        ]);
         
+        setMenuItems(menuData);
+        setOrders(ordersData);
+      } else {
+        // No tiene restaurantes configurados
+        setRestaurant(null);
         setMenuItems([]);
         setOrders([]);
       }
@@ -66,6 +101,160 @@ const RestaurantDashboard: React.FC = () => {
       toast.error('Error al cargar los datos del restaurante');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateRestaurant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const newRestaurant = await apiService.createRestaurant(formData);
+      setRestaurant(newRestaurant);
+      setShowCreateForm(false);
+      toast.success('Restaurante creado exitosamente');
+      
+      // Recargar datos
+      await fetchRestaurantData();
+    } catch (error) {
+      console.error('Error creating restaurant:', error);
+      toast.error('Error al crear el restaurante');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateFood = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurant) return;
+    
+    try {
+      setLoading(true);
+      const foodData = {
+        ...foodFormData,
+        price: parseFloat(foodFormData.price),
+        preparation_time: parseInt(foodFormData.preparation_time)
+      };
+      
+      if (editingFood) {
+        await apiService.updateFood(editingFood.id, foodData);
+        toast.success('Producto actualizado exitosamente');
+      } else {
+        await apiService.createFood(restaurant.id, foodData);
+        toast.success('Producto creado exitosamente');
+      }
+      
+      setShowFoodForm(false);
+      setEditingFood(null);
+      setFoodFormData({
+        name: '',
+        description: '',
+        price: '',
+        category: '',
+        image_url: '',
+        preparation_time: '30'
+      });
+      
+      await fetchRestaurantData();
+    } catch (error) {
+      console.error('Error saving food:', error);
+      toast.error('Error al guardar el producto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditFood = (food: MenuItem) => {
+    setEditingFood(food);
+    setFoodFormData({
+      name: food.name,
+      description: food.description || '',
+      price: food.price.toString(),
+      category: food.category || '',
+      image_url: food.image_url || '',
+      preparation_time: food.preparation_time?.toString() || '30'
+    });
+    setShowFoodForm(true);
+  };
+
+  const handleDeleteFood = async (foodId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+    
+    try {
+      await apiService.deleteFood(foodId);
+      toast.success('Producto eliminado exitosamente');
+      await fetchRestaurantData();
+    } catch (error) {
+      console.error('Error deleting food:', error);
+      toast.error('Error al eliminar el producto');
+    }
+  };
+
+  const handleToggleFoodAvailability = async (foodId: string) => {
+    try {
+      await apiService.toggleFoodAvailability(foodId);
+      toast.success('Disponibilidad actualizada');
+      await fetchRestaurantData();
+    } catch (error) {
+      console.error('Error toggling availability:', error);
+      toast.error('Error al actualizar disponibilidad');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    try {
+      await apiService.updateOrderStatus(orderId, status);
+      toast.success('Estado del pedido actualizado');
+      await fetchRestaurantData();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('Error al actualizar el estado del pedido');
+    }
+  };
+
+
+
+  const getTodayOrders = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return orders.filter(order => 
+      order.created_at.split('T')[0] === today
+    );
+  };
+
+  const getTodayRevenue = () => {
+    return getTodayOrders().reduce((total, order) => total + toNumber(order.total_amount), 0);
+  };
+
+  const handleUpdateRestaurant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurant) return;
+
+    try {
+      setLoading(true);
+      await apiService.updateRestaurant(restaurant.id, restaurantSettings);
+      toast.success('Configuración actualizada exitosamente');
+      setIsEditingSettings(false);
+      await fetchRestaurantData();
+    } catch (error) {
+      console.error('Error updating restaurant:', error);
+      toast.error('Error al actualizar la configuración');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeRestaurantSettings = () => {
+    if (restaurant) {
+      setRestaurantSettings({
+        name: restaurant.name,
+        description: restaurant.description || '',
+        cuisine_type: restaurant.cuisine_type,
+        address: restaurant.address,
+        phone: restaurant.phone,
+        email: restaurant.email || '',
+        opening_time: restaurant.opening_time || '',
+        closing_time: restaurant.closing_time || '',
+        image_url: restaurant.image_url || ''
+      });
     }
   };
 
@@ -81,6 +270,7 @@ const RestaurantDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {!showCreateForm ? (
           <div className="text-center">
             <Store className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -90,12 +280,150 @@ const RestaurantDashboard: React.FC = () => {
               Primero necesitas completar la información de tu restaurante
             </p>
             <button 
-              onClick={() => toast.success('Función disponible próximamente')}
-              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors btn-hover"
+                onClick={() => setShowCreateForm(true)}
+                className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
             >
               Configurar Restaurante
             </button>
           </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                Crear Nuevo Restaurante
+              </h2>
+              <form onSubmit={handleCreateRestaurant} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nombre del Restaurante *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Nombre de tu restaurante"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Tipo de Cocina
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cuisine_type}
+                      onChange={(e) => setFormData({...formData, cuisine_type: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Ej: Peruana, Italiana, China"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Teléfono *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="987654321"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="contacto@mirestaurante.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Hora de Apertura *
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={formData.opening_time}
+                      onChange={(e) => setFormData({...formData, opening_time: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Hora de Cierre *
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={formData.closing_time}
+                      onChange={(e) => setFormData({...formData, closing_time: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Dirección *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Dirección completa del restaurante"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Describe tu restaurante..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    URL de Imagen
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                  />
+                </div>
+                <div className="flex space-x-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-primary-600 text-white py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Creando...' : 'Crear Restaurante'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateForm(false)}
+                    className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -147,7 +475,7 @@ const RestaurantDashboard: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Pedidos Hoy</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{getTodayOrders().length}</p>
                 </div>
               </div>
             </div>
@@ -159,7 +487,7 @@ const RestaurantDashboard: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Ingresos Hoy</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">S/ 0.00</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatPrice(getTodayRevenue())}</p>
                 </div>
               </div>
             </div>
@@ -170,8 +498,10 @@ const RestaurantDashboard: React.FC = () => {
                   <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Tiempo Promedio</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">0 min</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Pedidos Pendientes</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {orders.filter(order => order.status === 'pending' || order.status === 'confirmed').length}
+                  </p>
                 </div>
               </div>
             </div>
@@ -191,14 +521,15 @@ const RestaurantDashboard: React.FC = () => {
         )}
 
         {activeTab === 'menu' && (
+          <>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Gestión de Menú
               </h2>
               <button 
-                onClick={() => toast.success('Función disponible próximamente')}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors btn-hover flex items-center"
+                  onClick={() => setShowFoodForm(true)}
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Producto
@@ -215,18 +546,187 @@ const RestaurantDashboard: React.FC = () => {
                   Agrega productos para que los clientes puedan hacer pedidos
                 </p>
                 <button 
-                  onClick={() => toast.success('Función disponible próximamente')}
-                  className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors btn-hover"
+                    onClick={() => setShowFoodForm(true)}
+                    className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   Agregar Primer Producto
                 </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Los productos del menú se mostrarían aquí */}
+                  {menuItems.map((item) => (
+                    <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      {item.image_url && (
+                        <img 
+                          src={item.image_url} 
+                          alt={item.name}
+                          className="w-full h-32 object-cover rounded-lg mb-3"
+                        />
+                      )}
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{item.name}</h3>
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          item.is_available 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
+                          {item.is_available ? 'Disponible' : 'No disponible'}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{item.description}</p>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-bold text-lg text-gray-900 dark:text-white">
+                          {formatPrice(item.price)}
+                        </span>
+                        {item.category && (
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded">
+                            {item.category}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleEditFood(item)}
+                          className="flex-1 bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition-colors flex items-center justify-center"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Editar
+                        </button>
+                        <button 
+                          onClick={() => handleToggleFoodAvailability(item.id)}
+                          className={`flex-1 px-3 py-2 rounded transition-colors flex items-center justify-center ${
+                            item.is_available
+                              ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          {item.is_available ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                          {item.is_available ? 'Ocultar' : 'Mostrar'}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteFood(item.id)}
+                          className="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal para crear/editar producto */}
+            {showFoodForm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    {editingFood ? 'Editar Producto' : 'Nuevo Producto'}
+                  </h3>
+                  <form onSubmit={handleCreateFood} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Nombre *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={foodFormData.name}
+                        onChange={(e) => setFoodFormData({...foodFormData, name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Descripción
+                      </label>
+                      <textarea
+                        value={foodFormData.description}
+                        onChange={(e) => setFoodFormData({...foodFormData, description: e.target.value})}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Precio *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={foodFormData.price}
+                          onChange={(e) => setFoodFormData({...foodFormData, price: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Categoría
+                        </label>
+                        <input
+                          type="text"
+                          value={foodFormData.category}
+                          onChange={(e) => setFoodFormData({...foodFormData, category: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        URL de Imagen
+                      </label>
+                      <input
+                        type="url"
+                        value={foodFormData.image_url}
+                        onChange={(e) => setFoodFormData({...foodFormData, image_url: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Tiempo de Preparación (minutos)
+                      </label>
+                      <input
+                        type="number"
+                        value={foodFormData.preparation_time}
+                        onChange={(e) => setFoodFormData({...foodFormData, preparation_time: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex space-x-3 mt-6">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="flex-1 bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                      >
+                        {loading ? 'Guardando...' : (editingFood ? 'Actualizar' : 'Crear')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowFoodForm(false);
+                          setEditingFood(null);
+                          setFoodFormData({
+                            name: '',
+                            description: '',
+                            price: '',
+                            category: '',
+                            image_url: '',
+                            preparation_time: '30'
+                          });
+                        }}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
-          </div>
+          </>
         )}
 
         {activeTab === 'orders' && (
@@ -247,7 +747,86 @@ const RestaurantDashboard: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Los pedidos se mostrarían aquí */}
+                {orders.map((order) => (
+                  <div key={order.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          Pedido #{order.id.slice(-8)}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {order.user?.name} - {new Date(order.created_at).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {order.delivery_address}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg text-gray-900 dark:text-white">
+                          {formatPrice(order.total_amount)}
+                        </p>
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as Order['status'])}
+                          className={`px-3 py-1 text-sm rounded border ${
+                            order.status === 'pending' ? 'bg-yellow-100 border-yellow-300 text-yellow-800' :
+                            order.status === 'confirmed' ? 'bg-blue-100 border-blue-300 text-blue-800' :
+                            order.status === 'preparing' ? 'bg-orange-100 border-orange-300 text-orange-800' :
+                            order.status === 'ready' ? 'bg-purple-100 border-purple-300 text-purple-800' :
+                            order.status === 'delivered' ? 'bg-green-100 border-green-300 text-green-800' :
+                            'bg-red-100 border-red-300 text-red-800'
+                          }`}
+                        >
+                          <option value="pending">Pendiente</option>
+                          <option value="confirmed">Confirmado</option>
+                          <option value="preparing">Preparando</option>
+                          <option value="ready">Listo</option>
+                          <option value="delivered">Entregado</option>
+                          <option value="cancelled">Cancelado</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {order.order_items && order.order_items.length > 0 && (
+                      <div className="mt-3">
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Items:</h4>
+                        <div className="space-y-1">
+                          {order.order_items.map((item) => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                              <span className="text-gray-600 dark:text-gray-400">
+                                {item.quantity}x {item.food?.name}
+                              </span>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {formatPrice(item.subtotal)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {order.notes && (
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">Notas:</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{order.notes}</p>
+                      </div>
+                    )}
+                    
+                    <div className="mt-3 flex justify-between items-center text-sm">
+                      <span className={`px-2 py-1 rounded ${
+                        order.payment_status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                        order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                        'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>
+                        Pago: {
+                          order.payment_status === 'paid' ? 'Pagado' :
+                          order.payment_status === 'pending' ? 'Pendiente' :
+                          'Fallido'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -256,20 +835,42 @@ const RestaurantDashboard: React.FC = () => {
         {activeTab === 'settings' && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Información del Restaurante
               </h2>
+                {!isEditingSettings ? (
+                  <button 
+                    onClick={() => setIsEditingSettings(true)}
+                    className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Editar
+                  </button>
+                ) : (
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={() => setIsEditingSettings(false)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
               
+              <form onSubmit={handleUpdateRestaurant}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nombre del Restaurante
+                      Nombre del Restaurante *
                   </label>
                   <input
                     type="text"
-                    value={restaurant.name}
+                      value={isEditingSettings ? restaurantSettings.name : restaurant.name}
+                      onChange={(e) => setRestaurantSettings({...restaurantSettings, name: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    readOnly
+                      readOnly={!isEditingSettings}
                   />
                 </div>
                 
@@ -279,45 +880,117 @@ const RestaurantDashboard: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={restaurant.cuisine_type}
+                      value={isEditingSettings ? restaurantSettings.cuisine_type : restaurant.cuisine_type}
+                      onChange={(e) => setRestaurantSettings({...restaurantSettings, cuisine_type: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      readOnly={!isEditingSettings}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Teléfono *
+                    </label>
+                    <input
+                      type="tel"
+                      value={isEditingSettings ? restaurantSettings.phone : restaurant.phone}
+                      onChange={(e) => setRestaurantSettings({...restaurantSettings, phone: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      readOnly={!isEditingSettings}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={isEditingSettings ? restaurantSettings.email : (restaurant.email || '')}
+                      onChange={(e) => setRestaurantSettings({...restaurantSettings, email: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      readOnly={!isEditingSettings}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Hora de Apertura *
+                    </label>
+                    <input
+                      type="time"
+                      value={isEditingSettings ? restaurantSettings.opening_time : (restaurant.opening_time || '')}
+                      onChange={(e) => setRestaurantSettings({...restaurantSettings, opening_time: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    readOnly
+                      readOnly={!isEditingSettings}
                   />
                 </div>
                 
                 <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Hora de Cierre *
+                    </label>
+                    <input
+                      type="time"
+                      value={isEditingSettings ? restaurantSettings.closing_time : (restaurant.closing_time || '')}
+                      onChange={(e) => setRestaurantSettings({...restaurantSettings, closing_time: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      readOnly={!isEditingSettings}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Teléfono
+                    Dirección *
                   </label>
                   <input
                     type="text"
-                    value={restaurant.phone}
+                    value={isEditingSettings ? restaurantSettings.address : restaurant.address}
+                    onChange={(e) => setRestaurantSettings({...restaurantSettings, address: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    readOnly
+                    readOnly={!isEditingSettings}
+                  />
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={isEditingSettings ? restaurantSettings.description : (restaurant.description || '')}
+                    onChange={(e) => setRestaurantSettings({...restaurantSettings, description: e.target.value})}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    readOnly={!isEditingSettings}
                   />
                 </div>
                 
-                <div>
+                <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Costo de Delivery
+                    URL de Imagen
                   </label>
                   <input
-                    type="number"
-                    value={restaurant.delivery_fee}
+                    type="url"
+                    value={isEditingSettings ? restaurantSettings.image_url : (restaurant.image_url || '')}
+                    onChange={(e) => setRestaurantSettings({...restaurantSettings, image_url: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    readOnly
+                    readOnly={!isEditingSettings}
                   />
-                </div>
               </div>
               
+                {isEditingSettings && (
               <div className="mt-6">
                 <button 
-                  onClick={() => toast.success('Función disponible próximamente')}
-                  className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors btn-hover"
+                      type="submit"
+                      disabled={loading}
+                      className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
                 >
-                  Guardar Cambios
+                      {loading ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
+                )}
+              </form>
             </div>
           </div>
         )}

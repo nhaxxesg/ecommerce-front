@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { 
-  Moon, 
-  Sun, 
-  User, 
-  LogOut, 
+  Store, 
   ShoppingCart, 
   Menu, 
   X,
-  Store,
-  Home
+  Sun, 
+  Moon,
+  User,
+  LogOut,
+  Home,
+  LayoutDashboard
 } from 'lucide-react';
 
 const Navbar: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { state: cartState } = useCart();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -31,22 +33,20 @@ const Navbar: React.FC = () => {
     }
   };
 
-  const getDashboardLink = () => {
-    if (!user) return '/';
-    return user.user_type === 'restaurant' ? '/restaurant-dashboard' : '/customer-dashboard';
+  const getDashboardPath = () => {
+    return user?.role === 'owner' ? '/restaurant-dashboard' : '/customer-dashboard';
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link 
-            to="/" 
-            className="flex items-center space-x-2 text-xl font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
-          >
-            <Store className="h-8 w-8" />
-            <span>Comida Express</span>
+          <Link to="/" className="flex items-center space-x-2">
+            <Store className="h-8 w-8 text-primary-600 dark:text-primary-400" />
+            <span className="text-xl font-bold text-gray-900 dark:text-white">
+              Comida Express
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -61,24 +61,25 @@ const Navbar: React.FC = () => {
 
             {user && (
               <Link 
-                to={getDashboardLink()} 
+                to={getDashboardPath()}
                 className="flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
-                <User className="h-4 w-4" />
+                <LayoutDashboard className="h-4 w-4" />
                 <span>Dashboard</span>
               </Link>
             )}
 
-            {user?.user_type === 'customer' && (
+            {/* Cart (solo para clientes) */}
+            {user?.role === 'client' && (
               <Link 
                 to="/checkout" 
                 className="relative flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-5 w-5" />
                 <span>Carrito</span>
                 {cartState.items.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartState.items.reduce((sum, item) => sum + item.quantity, 0)}
+                    {cartState.items.reduce((total, item) => total + item.quantity, 0)}
                   </span>
                 )}
               </Link>
@@ -87,36 +88,64 @@ const Navbar: React.FC = () => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
 
-            {/* Auth Buttons */}
+            {/* User Menu */}
             {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Hola, {user.full_name}
-                </span>
+              <div className="relative">
                 <button
-                  onClick={handleSignOut}
-                  className="flex items-center space-x-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors btn-hover"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span>Salir</span>
+                  <User className="h-5 w-5" />
+                  <span className="hidden lg:block">{user.name}</span>
                 </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2">
+                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {user.role === 'owner' ? 'Propietario' : 'Cliente'}
+                      </p>
+                    </div>
+                    <Link
+                      to={getDashboardPath()}
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-4">
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                 >
                   Iniciar Sesión
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors btn-hover"
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
                   Registrarse
                 </Link>
@@ -124,22 +153,24 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu button */}
+          <div className="md:hidden">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
+          </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col space-y-3">
+          <div className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4">
+            <div className="space-y-2">
               <Link 
                 to="/" 
-                className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Home className="h-4 w-4" />
@@ -148,57 +179,67 @@ const Navbar: React.FC = () => {
 
               {user && (
                 <Link 
-                  to={getDashboardLink()} 
-                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  to={getDashboardPath()}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <User className="h-4 w-4" />
+                  <LayoutDashboard className="h-4 w-4" />
                   <span>Dashboard</span>
                 </Link>
               )}
 
-              {user?.user_type === 'customer' && (
+              {user?.role === 'client' && (
                 <Link 
                   to="/checkout" 
-                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <ShoppingCart className="h-4 w-4" />
-                  <span>Carrito ({cartState.items.reduce((sum, item) => sum + item.quantity, 0)})</span>
+                  <span>Carrito ({cartState.items.reduce((total, item) => total + item.quantity, 0)})</span>
                 </Link>
               )}
 
               <button
                 onClick={toggleTheme}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="flex items-center space-x-2 w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
               >
                 {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                <span>{theme === 'light' ? 'Modo Oscuro' : 'Modo Claro'}</span>
+                <span>Cambiar Tema</span>
               </button>
 
               {user ? (
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {user.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {user.role === 'owner' ? 'Propietario' : 'Cliente'}
+                    </p>
+                  </div>
                 <button
                   onClick={() => {
+                      setIsMenuOpen(false);
                     handleSignOut();
-                    setIsMenuOpen(false);
                   }}
-                  className="flex items-center space-x-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    className="flex items-center space-x-2 w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Cerrar Sesión</span>
                 </button>
+                </div>
               ) : (
-                <div className="flex flex-col space-y-2 px-3">
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2 space-y-2">
                   <Link
                     to="/login"
-                    className="px-4 py-2 text-center text-primary-600 dark:text-primary-400 border border-primary-600 dark:border-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                    className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Iniciar Sesión
                   </Link>
                   <Link
                     to="/register"
-                    className="px-4 py-2 text-center bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="block px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Registrarse

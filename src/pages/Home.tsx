@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Restaurant, MenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { apiService } from '../lib/api';
+import { formatPrice } from '../lib/utils';
 import { 
   Star, 
   Clock, 
@@ -11,157 +13,92 @@ import {
   Search,
   Filter,
   ChefHat,
-  Truck
+  Truck,
+  Store
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// Datos de prueba hasta integrar con Laravel
-const mockRestaurants: Restaurant[] = [
-  {
-    id: '1',
-    profile_id: 'profile_1',
-    name: 'Pizza Palace',
-    description: 'Las mejores pizzas artesanales de la ciudad',
-    cuisine_type: 'Italiana',
-    address: 'Av. Principal 123',
-    phone: '987654321',
-    image_url: 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg',
-    delivery_fee: 5.00,
-    minimum_order: 20.00,
-    opening_hours: 'Lun - Dom: 11:00 AM - 11:00 PM',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '2',
-    profile_id: 'profile_2',
-    name: 'Burger Express',
-    description: 'Hamburguesas gourmet con ingredientes frescos',
-    cuisine_type: 'Americana',
-    address: 'Calle Comercio 456',
-    phone: '987654322',
-    image_url: 'https://images.pexels.com/photos/1639557/pexels-photo-1639557.jpeg',
-    delivery_fee: 4.00,
-    minimum_order: 15.00,
-    opening_hours: 'Lun - Dom: 10:00 AM - 10:00 PM',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: '3',
-    profile_id: 'profile_3',
-    name: 'Sushi Zen',
-    description: 'Auténtica comida japonesa preparada por chefs expertos',
-    cuisine_type: 'Japonesa',
-    address: 'Av. Libertad 789',
-    phone: '987654323',
-    image_url: 'https://images.pexels.com/photos/248444/pexels-photo-248444.jpeg',
-    delivery_fee: 6.00,
-    minimum_order: 25.00,
-    opening_hours: 'Mar - Dom: 12:00 PM - 10:00 PM',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
-
-const mockFeaturedItems: (MenuItem & { restaurant: Restaurant })[] = [
-  {
-    id: '1',
-    restaurant_id: '1',
-    name: 'Pizza Margherita',
-    description: 'Clásica pizza con tomate, mozzarella y albahaca fresca',
-    price: 18.90,
-    category: 'Pizzas',
-    image_url: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg',
-    preparation_time: 25,
-    is_available: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    restaurant: mockRestaurants[0]
-  },
-  {
-    id: '2',
-    restaurant_id: '2',
-    name: 'Burger Clásica',
-    description: 'Hamburguesa con carne angus, lechuga, tomate y papas',
-    price: 16.50,
-    category: 'Hamburguesas',
-    image_url: 'https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg',
-    preparation_time: 20,
-    is_available: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    restaurant: mockRestaurants[1]
-  }
-];
 
 const Home: React.FC = () => {
   const { user } = useAuth();
   const { addItem } = useCart();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [featuredItems, setFeaturedItems] = useState<(MenuItem & { restaurant: Restaurant })[]>([]);
+  const [featuredItems, setFeaturedItems] = useState<(MenuItem & { restaurant?: Restaurant })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState('');
 
   useEffect(() => {
-    fetchRestaurants();
-    fetchFeaturedItems();
+    fetchData();
   }, []);
 
-  const fetchRestaurants = async () => {
+  const fetchData = async () => {
     try {
-      // TODO: Reemplazar con llamada a Laravel API
-      // const response = await fetch('/api/restaurants');
-      // const data = await response.json();
+      setLoading(true);
       
-      // Simulamos delay de API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setRestaurants(mockRestaurants);
+      // Cargar restaurantes
+      const restaurantsData = await apiService.getRestaurants();
+      const safeRestaurantsData = Array.isArray(restaurantsData) ? restaurantsData : [];
+      setRestaurants(safeRestaurantsData);
+      
+      // Cargar algunos platos destacados de los restaurantes
+      if (safeRestaurantsData.length > 0) {
+        const featuredItemsPromises = safeRestaurantsData.slice(0, 3).map(async (restaurant) => {
+          try {
+            const foods = await apiService.getRestaurantFoods(restaurant.id);
+            // Tomar los primeros 2 platos de cada restaurante
+            const safeFoods = Array.isArray(foods) ? foods : [];
+            return safeFoods.slice(0, 2).map(food => ({
+              ...food,
+              restaurant
+            }));
     } catch (error) {
-      console.error('Error fetching restaurants:', error);
-      toast.error('Error al cargar los restaurantes');
+            console.error(`Error loading foods for restaurant ${restaurant.id}:`, error);
+            return [];
     }
-  };
+        });
 
-  const fetchFeaturedItems = async () => {
-    try {
-      // TODO: Reemplazar con llamada a Laravel API
-      // const response = await fetch('/api/featured-items');
-      // const data = await response.json();
-      
-      // Simulamos delay de API
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setFeaturedItems(mockFeaturedItems);
+        const featuredResults = await Promise.all(featuredItemsPromises);
+        const allFeaturedItems = featuredResults.flat();
+        setFeaturedItems(allFeaturedItems);
+      }
     } catch (error) {
-      console.error('Error fetching featured items:', error);
+      console.error('Error fetching data:', error);
+      toast.error('Error al cargar los datos');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredRestaurants = restaurants.filter(restaurant => {
+  const filteredRestaurants = Array.isArray(restaurants) ? restaurants.filter(restaurant => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.cuisine_type.toLowerCase().includes(searchTerm.toLowerCase());
+                         restaurant.cuisine_type?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCuisine = !selectedCuisine || restaurant.cuisine_type === selectedCuisine;
-    return matchesSearch && matchesCuisine;
-  });
+    return matchesSearch && matchesCuisine && restaurant.is_active;
+  }) : [];
 
-  const cuisineTypes = [...new Set(restaurants.map(r => r.cuisine_type))];
+  const cuisineTypes = Array.isArray(restaurants) 
+    ? [...new Set(restaurants.map(r => r.cuisine_type).filter(Boolean))]
+    : [];
 
   const handleAddToCart = (menuItem: MenuItem, restaurant: Restaurant) => {
     if (!user) {
       toast.error('Debes iniciar sesión para agregar productos al carrito');
       return;
     }
-    if (user.user_type !== 'customer') {
+    if (user.role !== 'client') {
       toast.error('Solo los clientes pueden agregar productos al carrito');
       return;
     }
     addItem(menuItem, restaurant);
+  };
+
+
+
+  const getOpeningHours = (restaurant: Restaurant) => {
+    if (restaurant.opening_time && restaurant.closing_time) {
+      return `${restaurant.opening_time} - ${restaurant.closing_time}`;
+    }
+    return restaurant.opening_hours || 'Horario no disponible';
   };
 
   if (loading) {
@@ -202,10 +139,10 @@ const Home: React.FC = () => {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Search and Filter */}
+        {/* Search and Filters */}
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
@@ -220,7 +157,7 @@ const Home: React.FC = () => {
               <select
                 value={selectedCuisine}
                 onChange={(e) => setSelectedCuisine(e.target.value)}
-                className="pl-10 pr-8 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white appearance-none cursor-pointer"
+                className="pl-10 pr-8 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white appearance-none cursor-pointer min-w-[200px]"
               >
                 <option value="">Todos los tipos</option>
                 {cuisineTypes.map(cuisine => (
@@ -234,46 +171,49 @@ const Home: React.FC = () => {
         {/* Featured Items */}
         {featuredItems.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
               Platos Destacados
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredItems.map((item) => (
-                <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden card-hover">
-                  <div className="relative h-48">
+                <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-w-16 aspect-h-9">
                     <img
                       src={item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-48 object-cover"
                     />
-                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-sm font-semibold text-primary-600 dark:text-primary-400">
-                      S/ {item.price.toFixed(2)}
-                    </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                       {item.name}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      {item.restaurant.name}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
+                      <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                        {formatPrice(item.price)}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
                       {item.description}
                     </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {item.preparation_time} min
-                      </div>
-                      {user?.user_type === 'customer' && (
-                        <button
-                          onClick={() => handleAddToCart(item, item.restaurant)}
-                          className="btn-primary p-2 rounded-full"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                      <Store className="h-4 w-4 mr-1" />
+                      <span>{item.restaurant?.name}</span>
+                      {item.preparation_time && (
+                        <>
+                          <Clock className="h-4 w-4 ml-3 mr-1" />
+                          <span>{item.preparation_time} min</span>
+                        </>
                       )}
                     </div>
+                    <button
+                      onClick={() => item.restaurant && handleAddToCart(item, item.restaurant)}
+                      disabled={!item.is_available}
+                      className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      {item.is_available ? 'Agregar al Carrito' : 'No Disponible'}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -283,14 +223,26 @@ const Home: React.FC = () => {
 
         {/* Restaurants Grid */}
         <section>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             Restaurantes Disponibles
           </h2>
+          
           {filteredRestaurants.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">
-                No se encontraron restaurantes que coincidan con tu búsqueda.
-              </p>
+              <div className="text-gray-500 dark:text-gray-400 mb-4">
+                {restaurants.length === 0 ? 'No hay restaurantes disponibles en este momento.' : 'No se encontraron restaurantes que coincidan con tu búsqueda.'}
+              </div>
+              {searchTerm || selectedCuisine ? (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedCuisine('');
+                  }}
+                  className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  Limpiar filtros
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -298,52 +250,49 @@ const Home: React.FC = () => {
                 <Link
                   key={restaurant.id}
                   to={`/restaurant/${restaurant.id}`}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden card-hover block"
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow group"
                 >
-                  <div className="relative h-48">
+                  <div className="aspect-w-16 aspect-h-9">
                     <img
-                      src={restaurant.image_url || 'https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg'}
+                      src={restaurant.image_url || 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg'}
                       alt={restaurant.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">4.5</span>
-                      </div>
-                    </div>
                   </div>
                   <div className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                         {restaurant.name}
                       </h3>
-                      <span className="text-sm text-primary-600 dark:text-primary-400 font-medium">
-                        {restaurant.cuisine_type}
-                      </span>
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">4.5</span>
+                      </div>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                    
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
                       {restaurant.description}
                     </p>
-                    <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                    
+                    <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        <span className="truncate">{restaurant.address}</span>
+                        <ChefHat className="h-4 w-4 mr-2" />
+                        <span>{restaurant.cuisine_type}</span>
                       </div>
                       <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        <span>30-45 min</span>
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>{restaurant.address}</span>
                       </div>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Delivery: S/ {restaurant.delivery_fee.toFixed(2)}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Mín: S/ {restaurant.minimum_order.toFixed(2)}
-                        </span>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>{getOpeningHours(restaurant)}</span>
                       </div>
+                      {restaurant.delivery_fee && (
+                        <div className="flex items-center">
+                          <Truck className="h-4 w-4 mr-2" />
+                          <span>Delivery {formatPrice(restaurant.delivery_fee)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '../types';
+import { User, RegisterRequest } from '../types';
+import { apiService } from '../lib/api';
 import toast from 'react-hot-toast';
 
 /**
@@ -17,7 +18,7 @@ import toast from 'react-hot-toast';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, userData: Partial<User>) => Promise<void>;
+  signUp: (userData: RegisterRequest) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -35,51 +36,38 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar si hay un token en localStorage para mantener la sesión
-    const token = localStorage.getItem('auth_token');
-    if (token && token.startsWith('mock_token_')) {
-      // Restaurar usuario mock desde localStorage o crear uno nuevo
-      const savedUser = localStorage.getItem('mock_user');
-      if (savedUser) {
-        try {
-          const user = JSON.parse(savedUser);
-          setUser(user);
-        } catch (error) {
-          console.error('Error parsing saved user:', error);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('mock_user');
-        }
-      }
-    }
-    setLoading(false);
+    // Verificar si hay un token y restaurar la sesión
+    checkAuth();
   }, []);
 
-  const signUp = async (email: string, password: string, userData: Partial<User>) => {
+  const checkAuth = async () => {
+    try {
+    const token = localStorage.getItem('auth_token');
+      if (token) {
+        const userData = await apiService.getCurrentUser();
+        setUser(userData);
+      }
+        } catch (error) {
+      console.error('Error checking auth:', error);
+      // Si el token es inválido, limpiarlo
+      localStorage.removeItem('auth_token');
+    } finally {
+    setLoading(false);
+    }
+  };
+
+  const signUp = async (userData: RegisterRequest) => {
     try {
       setLoading(true);
       
-      // REGISTRO MOCK - Acepta cualquier email y contraseña
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay de API
+      const response = await apiService.register(userData);
       
-      // Crear usuario mock
-      const mockUser: User = {
-        id: 'mock_user_' + Date.now(),
-        email: email,
-        user_type: userData.user_type || 'customer',
-        full_name: userData.full_name || 'Usuario Demo',
-        phone: userData.phone || '987654321',
-        address: userData.address || 'Dirección de ejemplo 123',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      // Guardar token y usuario mock
-      localStorage.setItem('auth_token', 'mock_token_' + Date.now());
-      localStorage.setItem('mock_user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      // Guardar token y usuario
+      localStorage.setItem('auth_token', response.access_token);
+      setUser(response.user);
       
       toast.success('Cuenta creada exitosamente');
     } catch (error: any) {
@@ -95,25 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // LOGIN MOCK - Acepta cualquier email y contraseña
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay de API
+      const response = await apiService.login(email, password);
       
-      // Crear usuario mock basado en el email
-      const mockUser: User = {
-        id: 'mock_user_' + Date.now(),
-        email: email,
-        user_type: email.includes('restaurant') ? 'restaurant' : 'customer',
-        full_name: email.includes('restaurant') ? 'Restaurante Demo' : 'Cliente Demo',
-        phone: '987654321',
-        address: 'Dirección de ejemplo 123',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      // Guardar token y usuario mock
-      localStorage.setItem('auth_token', 'mock_token_' + Date.now());
-      localStorage.setItem('mock_user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      // Guardar token y usuario
+      localStorage.setItem('auth_token', response.access_token);
+      setUser(response.user);
       
       toast.success('Sesión iniciada exitosamente');
     } catch (error: any) {
@@ -127,28 +101,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      // TODO: Notificar al servidor Laravel sobre el logout
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        await fetch('/api/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-      }
-      
+      // Notificar al servidor sobre el logout
+      await apiService.logout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Continuar con el logout local aunque falle el servidor
+    } finally {
       // Limpiar estado local
       localStorage.removeItem('auth_token');
-      localStorage.removeItem('mock_user');
       setUser(null);
-      
       toast.success('Sesión cerrada exitosamente');
-    } catch (error: any) {
-      console.error('Error signing out:', error);
-      toast.error(error.message || 'Error al cerrar sesión');
-      throw error;
     }
   };
 
@@ -157,23 +119,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) throw new Error('No user logged in');
       
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
       
-      // TODO: Integrar con Laravel API
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al actualizar el perfil');
-      }
-
-      const updatedUser = await response.json();
+      // TODO: Implementar endpoint de actualización de perfil en Laravel
+      // Por ahora solo actualizamos localmente
+      const updatedUser = { ...user, ...data };
       setUser(updatedUser);
       
       toast.success('Perfil actualizado exitosamente');

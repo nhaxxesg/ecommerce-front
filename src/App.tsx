@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
@@ -32,7 +31,7 @@ function App() {
                   <Route
                     path="/restaurant-dashboard"
                     element={
-                      <ProtectedRoute userType="restaurant">
+                      <ProtectedRoute userType="owner">
                         <RestaurantDashboard />
                       </ProtectedRoute>
                     }
@@ -40,7 +39,7 @@ function App() {
                   <Route
                     path="/customer-dashboard"
                     element={
-                      <ProtectedRoute userType="customer">
+                      <ProtectedRoute userType="client">
                         <CustomerDashboard />
                       </ProtectedRoute>
                     }

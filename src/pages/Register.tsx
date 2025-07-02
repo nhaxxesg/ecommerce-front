@@ -4,32 +4,20 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Store, 
-  User, 
-  Phone, 
-  MapPin,
-  Users,
-  ChefHat
-} from 'lucide-react';
+import { RegisterRequest } from '../types';
+import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Store, UserCheck } from 'lucide-react';
 
 const registerSchema = z.object({
+  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-  confirmPassword: z.string(),
-  full_name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  phone: z.string().min(9, 'El teléfono debe tener al menos 9 dígitos'),
-  address: z.string().min(5, 'La dirección debe tener al menos 5 caracteres'),
-  user_type: z.enum(['customer', 'restaurant'], {
-    required_error: 'Selecciona el tipo de cuenta',
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Las contraseñas no coinciden',
-  path: ['confirmPassword'],
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  password_confirmation: z.string(),
+  role: z.enum(['client', 'owner'], { required_error: 'Selecciona un tipo de cuenta' }),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+}).refine((data) => data.password === data.password_confirmation, {
+  message: "Las contraseñas no coinciden",
+  path: ["password_confirmation"],
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -38,7 +26,7 @@ const Register: React.FC = () => {
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -48,13 +36,16 @@ const Register: React.FC = () => {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: 'client'
+    }
   });
 
-  const userType = watch('user_type');
+  const selectedRole = watch('role');
 
   React.useEffect(() => {
     if (user) {
-      const redirectPath = user.user_type === 'restaurant' 
+      const redirectPath = user.role === 'owner' 
         ? '/restaurant-dashboard' 
         : '/customer-dashboard';
       navigate(redirectPath);
@@ -64,8 +55,7 @@ const Register: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     setLoading(true);
     try {
-      const { confirmPassword, ...userData } = data;
-      await signUp(data.email, data.password, userData);
+      await signUp(data as RegisterRequest);
     } catch (error) {
       console.error('Registration error:', error);
     } finally {
@@ -91,89 +81,80 @@ const Register: React.FC = () => {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          {/* User Type Selection */}
+          {/* Role Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Tipo de Cuenta
+              Tipo de cuenta
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="relative">
+              <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                selectedRole === 'client' 
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+              }`}>
                 <input
-                  {...register('user_type')}
+                  {...register('role')}
                   type="radio"
-                  value="customer"
+                  value="client"
                   className="sr-only"
                 />
-                <div className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  userType === 'customer'
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                }`}>
-                  <div className="flex flex-col items-center text-center">
-                    <Users className="h-6 w-6 mb-2 text-primary-600 dark:text-primary-400" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Cliente
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Pedir comida
-                    </span>
-                  </div>
+                <UserCheck className="h-5 w-5 text-primary-600 mr-3" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">Cliente</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Realizar pedidos</div>
                 </div>
               </label>
-              <label className="relative">
+              
+              <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                selectedRole === 'owner' 
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+              }`}>
                 <input
-                  {...register('user_type')}
+                  {...register('role')}
                   type="radio"
-                  value="restaurant"
+                  value="owner"
                   className="sr-only"
                 />
-                <div className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  userType === 'restaurant'
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                }`}>
-                  <div className="flex flex-col items-center text-center">
-                    <ChefHat className="h-6 w-6 mb-2 text-primary-600 dark:text-primary-400" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Restaurante
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Vender comida
-                    </span>
-                  </div>
+                <Store className="h-5 w-5 text-primary-600 mr-3" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">Restaurante</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Vender comida</div>
                 </div>
               </label>
             </div>
-            {errors.user_type && (
+            {errors.role && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.user_type.message}
+                {errors.role.message}
               </p>
             )}
           </div>
 
           <div className="space-y-4">
+            {/* Name */}
             <div>
-              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {userType === 'restaurant' ? 'Nombre del Restaurante' : 'Nombre Completo'}
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {selectedRole === 'owner' ? 'Nombre del Restaurante' : 'Nombre Completo'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('full_name')}
+                  {...register('name')}
                   type="text"
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder={userType === 'restaurant' ? 'Nombre de tu restaurante' : 'Tu nombre completo'}
+                  placeholder={selectedRole === 'owner' ? 'Mi Restaurante' : 'Juan Pérez'}
                 />
               </div>
-              {errors.full_name && (
+              {errors.name && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.full_name.message}
+                  {errors.name.message}
                 </p>
               )}
             </div>
 
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Correo Electrónico
@@ -196,50 +177,7 @@ const Register: React.FC = () => {
               )}
             </div>
 
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Teléfono
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  {...register('phone')}
-                  type="tel"
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="999 999 999"
-                />
-              </div>
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.phone.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Dirección
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  {...register('address')}
-                  type="text"
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder={userType === 'restaurant' ? 'Dirección del restaurante' : 'Tu dirección'}
-                />
-              </div>
-              {errors.address && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.address.message}
-                </p>
-              )}
-            </div>
-
+            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Contraseña
@@ -252,7 +190,7 @@ const Register: React.FC = () => {
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   className="block w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="Tu contraseña"
+                  placeholder="Mínimo 8 caracteres"
                 />
                 <button
                   type="button"
@@ -273,8 +211,9 @@ const Register: React.FC = () => {
               )}
             </div>
 
+            {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor="password_confirmation" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Confirmar Contraseña
               </label>
               <div className="relative">
@@ -282,26 +221,72 @@ const Register: React.FC = () => {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('confirmPassword')}
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  {...register('password_confirmation')}
+                  type={showPasswordConfirm ? 'text' : 'password'}
                   className="block w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="Confirma tu contraseña"
+                  placeholder="Repite tu contraseña"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
                 >
-                  {showConfirmPassword ? (
+                  {showPasswordConfirm ? (
                     <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
                   ) : (
                     <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
                   )}
                 </button>
               </div>
-              {errors.confirmPassword && (
+              {errors.password_confirmation && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.confirmPassword.message}
+                  {errors.password_confirmation.message}
+                </p>
+              )}
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Teléfono (Opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  {...register('phone')}
+                  type="tel"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  placeholder="987654321"
+                />
+              </div>
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.phone.message}
+                </p>
+              )}
+            </div>
+
+            {/* Address */}
+            <div>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {selectedRole === 'owner' ? 'Dirección del Restaurante' : 'Dirección'} (Opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  {...register('address')}
+                  type="text"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  placeholder="Av. Principal 123, Ciudad"
+                />
+              </div>
+              {errors.address && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.address.message}
                 </p>
               )}
             </div>

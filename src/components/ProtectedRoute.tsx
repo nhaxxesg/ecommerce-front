@@ -1,14 +1,15 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  userType?: 'customer' | 'restaurant';
+  userType?: 'client' | 'owner';
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, userType }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -19,11 +20,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, userType }) =
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Redirigir al login guardando la ubicación actual
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (userType && user.user_type !== userType) {
-    return <Navigate to="/" replace />;
+  if (userType && user.role !== userType) {
+    // Redirigir al dashboard apropiado según el tipo de usuario
+    const redirectPath = user.role === 'owner' 
+      ? '/restaurant-dashboard' 
+      : '/customer-dashboard';
+    return <Navigate to={redirectPath} replace />;
   }
 
   return <>{children}</>;

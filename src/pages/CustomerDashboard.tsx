@@ -3,12 +3,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { Order } from '../types';
 import { Clock, Package, CheckCircle, XCircle, MapPin, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { toNumber } from '../lib/utils';
 
 // Datos de prueba
 const mockOrders: Order[] = [
   {
     id: 'order_1',
-    customer_id: 'user_1',
+    user_id: 'user_1',
     restaurant_id: '1',
     status: 'preparing',
     total_amount: 45.50,
@@ -20,7 +21,7 @@ const mockOrders: Order[] = [
     updated_at: new Date().toISOString(),
     restaurant: {
       id: '1',
-      profile_id: 'profile_1',
+      owner_id: 'profile_1',
       name: 'Pizza Palace',
       description: 'Las mejores pizzas artesanales de la ciudad',
       cuisine_type: 'Italiana',
@@ -38,12 +39,13 @@ const mockOrders: Order[] = [
       {
         id: 'item_1',
         order_id: 'order_1',
-        menu_item_id: 'menu_1',
+        food_id: 'menu_1',
         quantity: 2,
         unit_price: 18.90,
         subtotal: 37.80,
         created_at: new Date().toISOString(),
-        menu_item: {
+        updated_at: new Date().toISOString(),
+                  food: {
           id: 'menu_1',
           restaurant_id: '1',
           name: 'Pizza Margherita',
@@ -188,7 +190,7 @@ const CustomerDashboard: React.FC = () => {
                         <span>{getStatusText(order.status)}</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900 dark:text-white mt-2">
-                        S/ {order.total_amount.toFixed(2)}
+                        S/ {toNumber(order.total_amount).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -206,20 +208,20 @@ const CustomerDashboard: React.FC = () => {
                         {order.order_items?.map((item) => (
                           <div key={item.id} className="flex items-center space-x-3">
                             <img
-                              src={item.menu_item?.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
-                              alt={item.menu_item?.name}
+                              src={item.food?.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
+                              alt={item.food?.name}
                               className="w-12 h-12 object-cover rounded-lg"
                             />
                             <div className="flex-1">
                               <p className="font-medium text-gray-900 dark:text-white">
-                                {item.menu_item?.name}
+                                {item.food?.name}
                               </p>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Cantidad: {item.quantity} • S/ {item.unit_price.toFixed(2)} c/u
+                                Cantidad: {item.quantity} • S/ {toNumber(item.unit_price).toFixed(2)} c/u
                               </p>
                             </div>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                              S/ {item.subtotal.toFixed(2)}
+                              S/ {toNumber(item.subtotal).toFixed(2)}
                             </p>
                           </div>
                         ))}

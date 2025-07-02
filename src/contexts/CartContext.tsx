@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { CartItem, MenuItem, Restaurant } from '../types';
 import toast from 'react-hot-toast';
+import { toNumber } from '../lib/utils';
 
 interface CartState {
   items: CartItem[];
@@ -58,7 +59,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       }
 
       const total = newItems.reduce(
-        (sum, item) => sum + item.menu_item.price * item.quantity,
+        (sum, item) => sum + toNumber(item.menu_item.price) * item.quantity,
         0
       );
 
@@ -72,7 +73,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'REMOVE_ITEM': {
       const newItems = state.items.filter(item => item.menu_item.id !== action.payload);
       const total = newItems.reduce(
-        (sum, item) => sum + item.menu_item.price * item.quantity,
+        (sum, item) => sum + toNumber(item.menu_item.price) * item.quantity,
         0
       );
 
@@ -97,7 +98,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       );
 
       const total = newItems.reduce(
-        (sum, item) => sum + item.menu_item.price * item.quantity,
+        (sum, item) => sum + toNumber(item.menu_item.price) * item.quantity,
         0
       );
 
@@ -120,12 +121,45 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
   }
 };
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(cartReducer, {
+// Función para cargar el carrito desde localStorage
+const loadCartFromStorage = (): CartState => {
+  try {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      const parsedCart = JSON.parse(savedCart);
+      // Recalcular el total por si acaso
+      const total = parsedCart.items.reduce(
+        (sum: number, item: CartItem) => sum + toNumber(item.menu_item.price) * item.quantity,
+        0
+      );
+      return { ...parsedCart, total };
+    }
+  } catch (error) {
+    console.error('Error loading cart from localStorage:', error);
+  }
+  return {
     items: [],
     restaurant: null,
     total: 0,
-  });
+  };
+};
+
+// Función para guardar el carrito en localStorage
+const saveCartToStorage = (cartState: CartState) => {
+  try {
+    localStorage.setItem('cart', JSON.stringify(cartState));
+  } catch (error) {
+    console.error('Error saving cart to localStorage:', error);
+  }
+};
+
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, dispatch] = useReducer(cartReducer, loadCartFromStorage());
+
+  // Guardar el carrito en localStorage cada vez que el estado cambie
+  useEffect(() => {
+    saveCartToStorage(state);
+  }, [state]);
 
   const addItem = (menuItem: MenuItem, restaurant: Restaurant) => {
     if (state.restaurant && state.restaurant.id !== restaurant.id) {

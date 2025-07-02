@@ -12,6 +12,7 @@ import {
   Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { toNumber } from '../lib/utils';
 
 const Checkout: React.FC = () => {
   const { user } = useAuth();
@@ -50,8 +51,8 @@ const Checkout: React.FC = () => {
       return;
     }
 
-    if (subtotal < cartState.restaurant.minimum_order) {
-      toast.error(`El pedido mínimo es S/ ${cartState.restaurant.minimum_order.toFixed(2)}`);
+    if (cartState.restaurant.minimum_order && subtotal < cartState.restaurant.minimum_order) {
+      toast.error(`El pedido mínimo es S/ ${toNumber(cartState.restaurant.minimum_order).toFixed(2)}`);
       return;
     }
 
@@ -178,7 +179,7 @@ const Checkout: React.FC = () => {
                         {item.menu_item.name}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        S/ {item.menu_item.price.toFixed(2)} c/u
+                        S/ {toNumber(item.menu_item.price).toFixed(2)} c/u
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -206,7 +207,7 @@ const Checkout: React.FC = () => {
                     </button>
                     <div className="text-right min-w-[4rem]">
                       <p className="font-semibold text-gray-900 dark:text-white">
-                        S/ {(item.menu_item.price * item.quantity).toFixed(2)}
+                        S/ {(toNumber(item.menu_item.price) * item.quantity).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -293,27 +294,31 @@ const Checkout: React.FC = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">S/ {subtotal.toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">S/ {toNumber(subtotal).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400 flex items-center">
                     <Truck className="h-4 w-4 mr-1" />
                     Delivery
                   </span>
-                  <span className="font-semibold text-gray-900 dark:text-white">S/ {deliveryFee.toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">S/ {toNumber(deliveryFee).toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
-                    <span className="text-lg font-bold text-primary-600 dark:text-primary-400">S/ {total.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-primary-600 dark:text-primary-400">S/ {toNumber(total).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               {subtotal < (cartState.restaurant?.minimum_order || 0) && (
                 <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 rounded-lg text-sm">
-                  <p>Pedido mínimo: S/ {cartState.restaurant?.minimum_order.toFixed(2)}</p>
-                  <p>Te faltan: S/ {(cartState.restaurant?.minimum_order! - subtotal).toFixed(2)}</p>
+                  {cartState.restaurant?.minimum_order && (
+                    <p>Pedido mínimo: S/ {toNumber(cartState.restaurant.minimum_order).toFixed(2)}</p>
+                  )}
+                                      {cartState.restaurant?.minimum_order && (
+                      <p>Te faltan: S/ {(toNumber(cartState.restaurant.minimum_order) - subtotal).toFixed(2)}</p>
+                    )}
                 </div>
               )}
 
