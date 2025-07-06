@@ -60,21 +60,41 @@ const Checkout: React.FC = () => {
     setLoading(true);
 
     try {
-      console.log('Creando pedido...', {
-        restaurant_id: cartState.restaurant.id,
-        delivery_address: deliveryAddress,
-        notes: notes.trim() || undefined,
-        items: cartState.items.map(item => ({
-          food_id: item.menu_item.id,
-          quantity: item.quantity
-        }))
-      });
+      // Si el método de pago es MercadoPago, creamos la preferencia directamente
+      if (paymentMethod === 'mercado_pago') {
+        try {
+          const items = cartState.items.map(item => ({
+            title: item.menu_item.name,
+            description: `${item.menu_item.name} de ${cartState.restaurant?.name}`,
+            picture_url: item.menu_item.image_url,
+            category_id: "food",
+            quantity: item.quantity,
+            currency_id: "PEN",
+            unit_price: Number(item.menu_item.price)
+          }));
 
-      // Llamada real al API Laravel
+          console.log('Enviando items a MercadoPago:', items);
+
+          const { init_point } = await apiService.createPaymentPreference(items);
+          
+          if (init_point) {
+            toast.success('Redirigiendo a Mercado Pago...');
+            window.location.href = init_point;
+            return;
+          }
+        } catch (error) {
+          console.error('Error creating MercadoPago preference:', error);
+          toast.error('Error al procesar el pago con MercadoPago');
+          return;
+        }
+      }
+
+      // Si llegamos aquí, es pago en efectivo o falló MercadoPago
       const orderData = {
         restaurant_id: cartState.restaurant.id,
         delivery_address: deliveryAddress,
         notes: notes.trim() || undefined,
+        payment_method: paymentMethod,
         items: cartState.items.map(item => ({
           food_id: item.menu_item.id,
           quantity: item.quantity
@@ -82,25 +102,10 @@ const Checkout: React.FC = () => {
       };
 
       const newOrder = await apiService.createOrder(orderData);
-      console.log('Pedido creado exitosamente:', newOrder);
 
-      // Clear cart and redirect
+      // Clear cart and show success message
       clearCart();
       toast.success('¡Pedido realizado exitosamente!');
-      
-      // Process payment if needed
-      if (paymentMethod === 'mercado_pago') {
-        try {
-          const paymentData = await apiService.createPayment(newOrder.id);
-          toast.success('Redirigiendo a Mercado Pago...');
-          // Redirect to MercadoPago
-          window.location.href = paymentData.init_point;
-          return;
-        } catch (paymentError) {
-          console.error('Error creating payment:', paymentError);
-          toast.error('Error al procesar el pago, pero el pedido fue creado');
-        }
-      }
       
       // Navigate to dashboard
       setTimeout(() => {

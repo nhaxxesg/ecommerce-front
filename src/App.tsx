@@ -12,6 +12,9 @@ import RestaurantDashboard from './pages/RestaurantDashboard';
 import CustomerDashboard from './pages/CustomerDashboard';
 import RestaurantDetail from './pages/RestaurantDetail';
 import Checkout from './pages/Checkout';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailure from './pages/PaymentFailure';
+import PaymentPending from './pages/PaymentPending';
 
 function App() {
   return (
@@ -44,6 +47,9 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+                  <Route path="/payment/success" element={<PaymentSuccess />} />
+                  <Route path="/payment/failure" element={<PaymentFailure />} />
+                  <Route path="/payment/pending" element={<PaymentPending />} />
                 </Routes>
               </main>
               <Toaster

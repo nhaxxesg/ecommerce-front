@@ -185,7 +185,16 @@ class ApiService {
   }
 
   // MercadoPago endpoints
-  async getMercadoPagoConfig(): Promise<{ public_key: string }> {
+  async createPaymentPreference(items: any[]): Promise<{ init_point: string }> {
+    const response = await fetch(`${API_URL}/mercadopago/create-preference`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ items }),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getMercadoPagoConfig(): Promise<{ public_key: string; mode: string }> {
     const response = await fetch(`${API_URL}/mercadopago/config`, {
       headers: this.getHeaders(),
     });
