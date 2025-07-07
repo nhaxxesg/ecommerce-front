@@ -3,13 +3,13 @@ import { User, Restaurant, MenuItem, Order, LoginResponse, RegisterRequest, Crea
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 class ApiService {
-  private getHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token');
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-    };
+  private getToken(): string | null {
+    return localStorage.getItem('auth_token');
+  }
+
+  private getAuthHeader(): string {
+    const token = this.getToken();
+    return token ? `Bearer ${token}` : '';
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
@@ -24,7 +24,11 @@ class ApiService {
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
       body: JSON.stringify({ email, password }),
     });
     return this.handleResponse(response);
@@ -33,7 +37,11 @@ class ApiService {
   async register(userData: RegisterRequest): Promise<LoginResponse> {
     const response = await fetch(`${API_URL}/register`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
       body: JSON.stringify(userData),
     });
     return this.handleResponse(response);
@@ -42,14 +50,22 @@ class ApiService {
   async logout(): Promise<void> {
     const response = await fetch(`${API_URL}/logout`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }
 
   async getCurrentUser(): Promise<User> {
     const response = await fetch(`${API_URL}/user`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }
@@ -57,7 +73,11 @@ class ApiService {
   // Restaurants endpoints
   async getRestaurants(): Promise<Restaurant[]> {
     const response = await fetch(`${API_URL}/restaurants`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     const data = await this.handleResponse<any>(response);
     // Manejar respuesta paginada de Laravel
@@ -66,61 +86,123 @@ class ApiService {
 
   async getRestaurant(id: string): Promise<Restaurant> {
     const response = await fetch(`${API_URL}/restaurants/${id}`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }
 
   async getMyRestaurants(): Promise<Restaurant[]> {
     const response = await fetch(`${API_URL}/my-restaurants`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     const data = await this.handleResponse<any>(response);
     return Array.isArray(data) ? data : data.data || [];
   }
 
-  async createRestaurant(data: Partial<Restaurant>): Promise<Restaurant> {
+  async createRestaurant(data: Partial<Restaurant> & { image?: File }): Promise<Restaurant> {
+    const formData = new FormData();
+    
+    // Agregar todos los campos al FormData
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'image' && value instanceof File) {
+          formData.append('image', value);
+        } else {
+          formData.append(key, value.toString());
+        }
+      }
+    });
+
     const response = await fetch(`${API_URL}/restaurants`, {
       method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
+      headers: {
+        'Authorization': this.getAuthHeader()
+      },
+      body: formData
     });
-    return this.handleResponse(response);
+
+    if (!response.ok) {
+      throw new Error('Error creating restaurant');
+    }
+
+    return response.json();
   }
 
-  async updateRestaurant(id: string, data: Partial<Restaurant>): Promise<Restaurant> {
-    const response = await fetch(`${API_URL}/restaurants/${id}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
+  async updateRestaurant(id: string, data: Partial<Restaurant> & { image?: File }): Promise<Restaurant> {
+    const formData = new FormData();
+    
+    // Agregar todos los campos al FormData
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'image' && value instanceof File) {
+          formData.append('image', value);
+        } else {
+          formData.append(key, value.toString());
+        }
+      }
     });
-    return this.handleResponse(response);
+
+    // Agregar el método _method para simular PUT
+    formData.append('_method', 'PUT');
+
+    const response = await fetch(`${API_URL}/restaurants/${id}`, {
+      method: 'POST', // Usamos POST con _method=PUT para enviar archivos
+      headers: {
+        'Authorization': this.getAuthHeader()
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Error updating restaurant');
+    }
+
+    return response.json();
   }
 
   // Foods endpoints
   async getRestaurantFoods(restaurantId: string): Promise<MenuItem[]> {
     const response = await fetch(`${API_URL}/restaurants/${restaurantId}/foods`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     const data = await this.handleResponse<any>(response);
     // Manejar posible respuesta paginada
     return Array.isArray(data) ? data : data.data || [];
   }
 
-  async createFood(restaurantId: string, data: Partial<MenuItem>): Promise<MenuItem> {
+  async createFood(restaurantId: string, data: FormData): Promise<MenuItem> {
     const response = await fetch(`${API_URL}/restaurants/${restaurantId}/foods`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
+        method: 'POST',
+        headers: {
+            'Authorization': this.getAuthHeader()
+        },
+        body: data,
     });
     return this.handleResponse(response);
   }
 
-  async updateFood(id: string, data: Partial<MenuItem>): Promise<MenuItem> {
+  async updateFood(id: string, data: FormData): Promise<MenuItem> {
+    // Agregar el método _method para simular PUT
+    data.append('_method', 'PUT');
+    
     const response = await fetch(`${API_URL}/foods/${id}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
+        method: 'POST', // Usamos POST con _method=PUT para enviar archivos
+        headers: {
+            'Authorization': this.getAuthHeader()
+        },
+        body: data,
     });
     return this.handleResponse(response);
   }
@@ -128,7 +210,11 @@ class ApiService {
   async toggleFoodAvailability(id: string): Promise<MenuItem> {
     const response = await fetch(`${API_URL}/foods/${id}/toggle-availability`, {
       method: 'PATCH',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }
@@ -136,7 +222,11 @@ class ApiService {
   async deleteFood(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/foods/${id}`, {
       method: 'DELETE',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }
@@ -144,7 +234,11 @@ class ApiService {
   // Orders endpoints
   async getOrders(): Promise<Order[]> {
     const response = await fetch(`${API_URL}/orders`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     const data = await this.handleResponse<any>(response);
     return Array.isArray(data) ? data : data.data || [];
@@ -152,7 +246,11 @@ class ApiService {
 
   async getRestaurantOrders(): Promise<Order[]> {
     const response = await fetch(`${API_URL}/restaurant-orders`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     const data = await this.handleResponse<any>(response);
     return Array.isArray(data) ? data : data.data || [];
@@ -161,7 +259,11 @@ class ApiService {
   async createOrder(data: CreateOrderRequest): Promise<Order> {
     const response = await fetch(`${API_URL}/orders`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
       body: JSON.stringify(data),
     });
     return this.handleResponse(response);
@@ -170,7 +272,11 @@ class ApiService {
   async updateOrderStatus(id: string, status: Order['status']): Promise<Order> {
     const response = await fetch(`${API_URL}/orders/${id}/status`, {
       method: 'PATCH',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
       body: JSON.stringify({ status }),
     });
     return this.handleResponse(response);
@@ -179,7 +285,11 @@ class ApiService {
   async createPayment(orderId: string): Promise<{ init_point: string }> {
     const response = await fetch(`${API_URL}/orders/${orderId}/payment`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }
@@ -188,7 +298,11 @@ class ApiService {
   async createPaymentPreference(items: any[]): Promise<{ init_point: string }> {
     const response = await fetch(`${API_URL}/mercadopago/create-preference`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
       body: JSON.stringify({ items }),
     });
     return this.handleResponse(response);
@@ -196,7 +310,11 @@ class ApiService {
 
   async getMercadoPagoConfig(): Promise<{ public_key: string; mode: string }> {
     const response = await fetch(`${API_URL}/mercadopago/config`, {
-      headers: this.getHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': this.getAuthHeader()
+      },
     });
     return this.handleResponse(response);
   }

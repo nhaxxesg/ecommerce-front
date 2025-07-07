@@ -17,6 +17,25 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+interface FormData {
+    name: string;
+    description: string;
+    cuisine_type: string;
+    address: string;
+    phone: string;
+    email: string;
+    opening_time: string;
+    closing_time: string;
+    image_url: string;
+    ruc: string;
+    image?: File;
+    image_preview?: string;
+}
+
+interface RestaurantSettings extends Omit<FormData, 'ruc'> {
+    // RestaurantSettings es igual a FormData pero sin el campo ruc
+}
+
 const RestaurantDashboard: React.FC = () => {
   const { user } = useAuth();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -27,7 +46,7 @@ const RestaurantDashboard: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showFoodForm, setShowFoodForm] = useState(false);
   const [editingFood, setEditingFood] = useState<MenuItem | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     cuisine_type: '',
@@ -39,7 +58,7 @@ const RestaurantDashboard: React.FC = () => {
     image_url: '',
     ruc: ''
   });
-  const [restaurantSettings, setRestaurantSettings] = useState({
+  const [restaurantSettings, setRestaurantSettings] = useState<RestaurantSettings>({
     name: '',
     description: '',
     cuisine_type: '',
@@ -57,7 +76,9 @@ const RestaurantDashboard: React.FC = () => {
     price: '',
     category: '',
     image_url: '',
-    preparation_time: '30'
+    preparation_time: '30',
+    image: null as File | null,
+    image_preview: ''
   });
 
   useEffect(() => {
@@ -129,38 +150,47 @@ const RestaurantDashboard: React.FC = () => {
     if (!restaurant) return;
     
     try {
-      setLoading(true);
-      const foodData = {
-        ...foodFormData,
-        price: parseFloat(foodFormData.price),
-        preparation_time: parseInt(foodFormData.preparation_time)
-      };
-      
-      if (editingFood) {
-        await apiService.updateFood(editingFood.id, foodData);
-        toast.success('Producto actualizado exitosamente');
-      } else {
-        await apiService.createFood(restaurant.id, foodData);
-        toast.success('Producto creado exitosamente');
-      }
-      
-      setShowFoodForm(false);
-      setEditingFood(null);
-      setFoodFormData({
-        name: '',
-        description: '',
-        price: '',
-        category: '',
-        image_url: '',
-        preparation_time: '30'
-      });
-      
-      await fetchRestaurantData();
+        setLoading(true);
+        const formData = new FormData();
+        
+        // Agregar todos los campos al FormData
+        Object.entries(foodFormData).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                if (key === 'image' && value instanceof File) {
+                    formData.append('image', value);
+                } else if (key !== 'image_preview') { // No enviar image_preview
+                    formData.append(key, value.toString());
+                }
+            }
+        });
+        
+        if (editingFood) {
+            await apiService.updateFood(editingFood.id, formData);
+            toast.success('Producto actualizado exitosamente');
+        } else {
+            await apiService.createFood(restaurant.id, formData);
+            toast.success('Producto creado exitosamente');
+        }
+        
+        setShowFoodForm(false);
+        setEditingFood(null);
+        setFoodFormData({
+            name: '',
+            description: '',
+            price: '',
+            category: '',
+            image_url: '',
+            preparation_time: '30',
+            image: null,
+            image_preview: ''
+        });
+        
+        await fetchRestaurantData();
     } catch (error) {
-      console.error('Error saving food:', error);
-      toast.error('Error al guardar el producto');
+        console.error('Error saving food:', error);
+        toast.error('Error al guardar el producto');
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
@@ -172,7 +202,9 @@ const RestaurantDashboard: React.FC = () => {
       price: food.price.toString(),
       category: food.category || '',
       image_url: food.image_url || '',
-      preparation_time: food.preparation_time?.toString() || '30'
+      preparation_time: food.preparation_time?.toString() || '30',
+      image: food.image,
+      image_preview: food.image_url || ''
     });
     setShowFoodForm(true);
   };
@@ -211,8 +243,6 @@ const RestaurantDashboard: React.FC = () => {
       toast.error('Error al actualizar el estado del pedido');
     }
   };
-
-
 
   const getTodayOrders = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -256,6 +286,20 @@ const RestaurantDashboard: React.FC = () => {
         closing_time: restaurant.closing_time || '',
         image_url: restaurant.image_url || ''
       });
+    }
+  };
+
+  const handleImageChange = <T extends FormData | RestaurantSettings>(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setData: React.Dispatch<React.SetStateAction<T>>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setData(prev => ({
+        ...prev,
+        image: file,
+        image_preview: URL.createObjectURL(file)
+      }));
     }
   };
 
@@ -410,17 +454,45 @@ const RestaurantDashboard: React.FC = () => {
                     placeholder="Describe tu restaurante..."
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    URL de Imagen
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="https://ejemplo.com/imagen.jpg"
-                  />
+                <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Imagen del Restaurante
+                    </label>
+                    <div className="mt-1 flex items-center space-x-4">
+                        {formData.image_preview ? (
+                            <img
+                                src={formData.image_preview}
+                                alt="Vista previa"
+                                className="h-32 w-32 object-cover rounded-lg"
+                            />
+                        ) : formData.image_url ? (
+                            <img
+                                src={formData.image_url}
+                                alt="Imagen actual"
+                                className="h-32 w-32 object-cover rounded-lg"
+                            />
+                        ) : (
+                            <div className="h-32 w-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+                                <span className="text-gray-400">Sin imagen</span>
+                            </div>
+                        )}
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageChange(e, setFormData)}
+                            className="block w-full text-sm text-gray-500 dark:text-gray-400
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-primary-50 file:text-primary-700
+                                hover:file:bg-primary-100
+                                dark:file:bg-primary-900 dark:file:text-primary-300
+                                dark:hover:file:bg-primary-800"
+                        />
+                    </div>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        PNG, JPG o GIF hasta 2MB
+                    </p>
                 </div>
                 <div className="flex space-x-4">
                   <button
@@ -691,15 +763,53 @@ const RestaurantDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        URL de Imagen
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Imagen del Producto
                       </label>
-                      <input
-                        type="url"
-                        value={foodFormData.image_url}
-                        onChange={(e) => setFoodFormData({...foodFormData, image_url: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
+                      <div className="mt-1 flex items-center space-x-4">
+                        {foodFormData.image_preview ? (
+                          <img
+                            src={foodFormData.image_preview}
+                            alt="Vista previa"
+                            className="h-32 w-32 object-cover rounded-lg"
+                          />
+                        ) : foodFormData.image_url ? (
+                          <img
+                            src={foodFormData.image_url}
+                            alt="Imagen actual"
+                            className="h-32 w-32 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="h-32 w-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+                            <span className="text-gray-400">Sin imagen</span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setFoodFormData({
+                                ...foodFormData,
+                                image: file,
+                                image_preview: URL.createObjectURL(file)
+                              });
+                            }
+                          }}
+                          className="block w-full text-sm text-gray-500 dark:text-gray-400
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-full file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-primary-50 file:text-primary-700
+                            hover:file:bg-primary-100
+                            dark:file:bg-primary-900 dark:file:text-primary-300
+                            dark:hover:file:bg-primary-800"
+                        />
+                      </div>
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        PNG, JPG o GIF hasta 2MB
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -731,7 +841,9 @@ const RestaurantDashboard: React.FC = () => {
                             price: '',
                             category: '',
                             image_url: '',
-                            preparation_time: '30'
+                            preparation_time: '30',
+                            image: null,
+                            image_preview: ''
                           });
                         }}
                         className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -814,7 +926,7 @@ const RestaurantDashboard: React.FC = () => {
                                 {item.quantity}x {item.food?.name}
                               </span>
                               <span className="font-medium text-gray-900 dark:text-white">
-                                {formatPrice(item.subtotal)}
+                                {formatPrice(item.subtotal || 0)}
                               </span>
                             </div>
                           ))}
@@ -996,17 +1108,47 @@ const RestaurantDashboard: React.FC = () => {
                   />
                 </div>
                 
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    URL de Imagen
-                  </label>
-                  <input
-                    type="url"
-                    value={isEditingSettings ? restaurantSettings.image_url : (restaurant.image_url || '')}
-                    onChange={(e) => setRestaurantSettings({...restaurantSettings, image_url: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    readOnly={!isEditingSettings}
-                  />
+                <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Imagen del Restaurante
+                    </label>
+                    <div className="mt-1 flex items-center space-x-4">
+                        {restaurantSettings.image_preview ? (
+                            <img
+                                src={restaurantSettings.image_preview}
+                                alt="Vista previa"
+                                className="h-32 w-32 object-cover rounded-lg"
+                            />
+                        ) : restaurant?.image_url ? (
+                            <img
+                                src={restaurant.image_url}
+                                alt="Imagen actual"
+                                className="h-32 w-32 object-cover rounded-lg"
+                            />
+                        ) : (
+                            <div className="h-32 w-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+                                <span className="text-gray-400">Sin imagen</span>
+                            </div>
+                        )}
+                        {isEditingSettings && (
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageChange(e, setRestaurantSettings)}
+                                className="block w-full text-sm text-gray-500 dark:text-gray-400
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-full file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-primary-50 file:text-primary-700
+                                    hover:file:bg-primary-100
+                                    dark:file:bg-primary-900 dark:file:text-primary-300
+                                    dark:hover:file:bg-primary-800"
+                            />
+                        )}
+                    </div>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        PNG, JPG o GIF hasta 2MB
+                    </p>
                 </div>
                 
                 {isEditingSettings && (

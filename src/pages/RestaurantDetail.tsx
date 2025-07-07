@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Restaurant, MenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -28,6 +28,7 @@ const RestaurantDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (id) {
@@ -98,8 +99,6 @@ const RestaurantDetail: React.FC = () => {
     const cartItem = cartState.items.find(item => item.menu_item.id === itemId);
     return cartItem ? cartItem.quantity : 0;
   };
-
-
 
   const getOpeningHours = (restaurant: Restaurant) => {
     if (restaurant.opening_time && restaurant.closing_time) {
@@ -207,38 +206,38 @@ const RestaurantDetail: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Menu */}
           <div className="flex-1">
-        {/* Category Filter */}
-        {categories.length > 1 && (
+            {/* Category Filter */}
+            {categories.length > 1 && (
               <div className="mb-6">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory('')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedCategory === ''
-                    ? 'bg-primary-600 text-white'
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedCategory('')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      selectedCategory === ''
+                        ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                Todos
-              </button>
-              {categories.map(category => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === category
-                      ? 'bg-primary-600 text-white'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {categories.map(category => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedCategory === category
+                          ? 'bg-primary-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Menu Items */}
+            {/* Menu Items */}
             <div className="space-y-6">
               {filteredItems.length === 0 ? (
                 <div className="text-center py-12">
@@ -250,88 +249,90 @@ const RestaurantDetail: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                filteredItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
-                  >
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="md:w-32 md:h-32 w-full h-48 flex-shrink-0">
-                  <img
-                    src={item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
-                    alt={item.name}
-                          className="w-full h-full object-cover rounded-lg"
-                  />
-                </div>
-                      
-                    <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {item.name}
-                      </h3>
-                          <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
-                            {formatPrice(item.price)}
-                          </span>
+                <div>
+                  {filteredItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow mb-6"
+                    >
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="md:w-32 md:h-32 w-full h-48 flex-shrink-0">
+                          <img
+                            src={item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
+                            alt={item.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
                         </div>
                         
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
-                        {item.description}
-                      </p>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                            {item.preparation_time && (
-                              <>
-                        <Clock className="h-4 w-4 mr-1" />
-                        <span>{item.preparation_time} min</span>
-                              </>
-                            )}
-                            <span className={`ml-3 px-2 py-1 rounded-full text-xs ${
-                              item.is_available 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            }`}>
-                              {item.is_available ? 'Disponible' : 'No disponible'}
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {item.name}
+                            </h3>
+                            <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                              {formatPrice(item.price)}
                             </span>
-                      </div>
-                          
-                          {user?.role === 'client' && (
-                            <div className="flex items-center gap-3">
-                              {getCartItemQuantity(item.id) > 0 && (
-                                <div className="flex items-center gap-2">
-                            <button
-                                    onClick={() => updateQuantity(item.id, quantities[item.id] - 1)}
-                                    className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                                  <span className="w-8 text-center font-medium">
-                                    {getCartItemQuantity(item.id)}
-                            </span>
-                            <button
-                                    onClick={() => addToCart(item)}
-                                    className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 transition-colors"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
                           </div>
+                          
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                            {item.description}
+                          </p>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                              {item.preparation_time && (
+                                <>
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  <span>{item.preparation_time} min</span>
+                                </>
                               )}
-                              
-                          <button
-                                onClick={() => addToCart(item)}
-                                disabled={!item.is_available}
-                                className="bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-                          >
-                                <Plus className="h-4 w-4" />
-                                {getCartItemQuantity(item.id) === 0 ? 'Agregar' : 'Agregar más'}
-                          </button>
+                              <span className={`ml-3 px-2 py-1 rounded-full text-xs ${
+                                item.is_available 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              }`}>
+                                {item.is_available ? 'Disponible' : 'No disponible'}
+                              </span>
+                            </div>
+                            
+                            {user?.role === 'client' && (
+                              <div className="flex items-center gap-3">
+                                {getCartItemQuantity(item.id) > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => updateQuantity(item.id, quantities[item.id] - 1)}
+                                      className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </button>
+                                    <span className="w-8 text-center font-medium">
+                                      {getCartItemQuantity(item.id)}
+                                    </span>
+                                    <button
+                                      onClick={() => addToCart(item)}
+                                      className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 transition-colors"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
+                                
+                                <button
+                                  onClick={() => addToCart(item)}
+                                  disabled={!item.is_available}
+                                  className="bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  {getCartItemQuantity(item.id) === 0 ? 'Agregar' : 'Agregar más'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              </div>
-                ))
               )}
             </div>
           </div>
@@ -361,9 +362,9 @@ const RestaurantDetail: React.FC = () => {
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {formatPrice(cartItem.menu_item.price * cartItem.quantity)}
                       </span>
-            </div>
-          ))}
-        </div>
+                    </div>
+                  ))}
+                </div>
 
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                   <div className="flex justify-between items-center font-semibold text-lg">
@@ -374,15 +375,15 @@ const RestaurantDetail: React.FC = () => {
                   </div>
                   
                   <button
-                    onClick={() => window.location.href = '/checkout'}
+                    onClick={() => navigate('/checkout')}
                     className="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
                   >
                     Proceder al Checkout
                   </button>
                 </div>
               </div>
-          </div>
-        )}
+            </div>
+          )}
         </div>
       </div>
     </div>
