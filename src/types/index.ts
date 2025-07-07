@@ -14,6 +14,8 @@ export interface Restaurant {
   id: string;
   owner_id: string;
   name: string;
+  ruc: string;
+  razon_social: string;
   description?: string;
   cuisine_type: string;
   address: string;
@@ -94,6 +96,7 @@ export interface RegisterRequest {
   role: 'client' | 'owner';
   phone?: string;
   address?: string;
+  ruc?: string;
 }
 
 export interface CreateOrderRequest {

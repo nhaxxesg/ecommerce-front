@@ -36,7 +36,8 @@ const RestaurantDashboard: React.FC = () => {
     email: '',
     opening_time: '10:00',
     closing_time: '22:00',
-    image_url: ''
+    image_url: '',
+    ruc: ''
   });
   const [restaurantSettings, setRestaurantSettings] = useState({
     name: '',
@@ -293,6 +294,22 @@ const RestaurantDashboard: React.FC = () => {
               </h2>
               <form onSubmit={handleCreateRestaurant} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      RUC *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.ruc}
+                      onChange={(e) => setFormData({...formData, ruc: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="20601030013"
+                      maxLength={11}
+                      pattern="[0-9]{11}"
+                      title="El RUC debe tener 11 dígitos"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Nombre del Restaurante *
@@ -863,7 +880,20 @@ const RestaurantDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Nombre del Restaurante *
+                      RUC *
+                  </label>
+                  <input
+                    type="text"
+                      value={formData.ruc}
+                      onChange={(e) => setFormData({...formData, ruc: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      readOnly={!isEditingSettings}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nombre del Restaurante *
                   </label>
                   <input
                     type="text"
@@ -887,42 +917,42 @@ const RestaurantDashboard: React.FC = () => {
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Teléfono *
-                    </label>
-                    <input
-                      type="tel"
-                      value={isEditingSettings ? restaurantSettings.phone : restaurant.phone}
-                      onChange={(e) => setRestaurantSettings({...restaurantSettings, phone: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      readOnly={!isEditingSettings}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={isEditingSettings ? restaurantSettings.email : (restaurant.email || '')}
-                      onChange={(e) => setRestaurantSettings({...restaurantSettings, email: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      readOnly={!isEditingSettings}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Hora de Apertura *
-                    </label>
-                    <input
-                      type="time"
-                      value={isEditingSettings ? restaurantSettings.opening_time : (restaurant.opening_time || '')}
-                      onChange={(e) => setRestaurantSettings({...restaurantSettings, opening_time: e.target.value})}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Teléfono *
+                  </label>
+                  <input
+                    type="tel"
+                    value={isEditingSettings ? restaurantSettings.phone : restaurant.phone}
+                    onChange={(e) => setRestaurantSettings({...restaurantSettings, phone: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      readOnly={!isEditingSettings}
+                    readOnly={!isEditingSettings}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={isEditingSettings ? restaurantSettings.email : (restaurant.email || '')}
+                    onChange={(e) => setRestaurantSettings({...restaurantSettings, email: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    readOnly={!isEditingSettings}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Hora de Apertura *
+                  </label>
+                  <input
+                    type="time"
+                    value={isEditingSettings ? restaurantSettings.opening_time : (restaurant.opening_time || '')}
+                    onChange={(e) => setRestaurantSettings({...restaurantSettings, opening_time: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    readOnly={!isEditingSettings}
                   />
                 </div>
                 
@@ -977,18 +1007,18 @@ const RestaurantDashboard: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     readOnly={!isEditingSettings}
                   />
-              </div>
-              
+                </div>
+                
                 {isEditingSettings && (
-              <div className="mt-6">
-                <button 
-                      type="submit"
-                      disabled={loading}
-                      className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-                >
-                      {loading ? 'Guardando...' : 'Guardar Cambios'}
-                </button>
-              </div>
+                <div className="mt-6">
+                  <button 
+                        type="submit"
+                        disabled={loading}
+                        className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                  >
+                        {loading ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
                 )}
               </form>
             </div>

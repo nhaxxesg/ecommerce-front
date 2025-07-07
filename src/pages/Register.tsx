@@ -5,19 +5,28 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { RegisterRequest } from '../types';
-import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Store, UserCheck } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Store, UserCheck, Building2 } from 'lucide-react';
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  name: z.string().min(1, 'El nombre es requerido'),
   email: z.string().email('Email inválido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
   password_confirmation: z.string(),
-  role: z.enum(['client', 'owner'], { required_error: 'Selecciona un tipo de cuenta' }),
+  role: z.enum(['client', 'owner']),
   phone: z.string().optional(),
   address: z.string().optional(),
+  ruc: z.string().optional(),
 }).refine((data) => data.password === data.password_confirmation, {
   message: "Las contraseñas no coinciden",
-  path: ["password_confirmation"],
+  path: ["password_confirmation"]
+}).refine((data) => {
+  if (data.role === 'owner') {
+    return data.ruc && data.ruc.length === 11 && /^[0-9]+$/.test(data.ruc);
+  }
+  return true;
+}, {
+  message: "El RUC es requerido y debe tener 11 dígitos numéricos",
+  path: ["ruc"]
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -290,6 +299,33 @@ const Register: React.FC = () => {
                 </p>
               )}
             </div>
+
+            {selectedRole === 'owner' && (
+              <div>
+                <label htmlFor="ruc" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  RUC *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Building2 className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    {...register('ruc')}
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="20601030013"
+                    maxLength={11}
+                    pattern="[0-9]{11}"
+                    title="El RUC debe tener 11 dígitos"
+                  />
+                </div>
+                {errors.ruc && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                    {errors.ruc.message}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <button
