@@ -121,11 +121,15 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  async createRestaurant(restaurantData: Partial<Restaurant>): Promise<Restaurant> {
+  async createRestaurant(restaurantData: FormData): Promise<Restaurant> {
+    const headers: HeadersInit = {
+      'Authorization': this.getAuthHeader(),
+    };
+
     const response = await fetch(`${API_URL}/restaurants`, {
       method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(restaurantData),
+      headers,
+      body: restaurantData,
       credentials: 'include'
     });
     return this.handleResponse(response);

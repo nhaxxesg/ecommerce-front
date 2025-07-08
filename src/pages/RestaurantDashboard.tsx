@@ -28,7 +28,7 @@ interface FormData {
     closing_time: string;
     image_url: string;
     ruc: string;
-    image?: File;
+    image?: File | null;
     image_preview?: string;
 }
 
@@ -132,7 +132,21 @@ const RestaurantDashboard: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const newRestaurant = await apiService.createRestaurant(formData);
+      
+      const formDataToSend = new FormData();
+      
+      // Agregar todos los campos al FormData
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (key === 'image' && value instanceof File) {
+            formDataToSend.append('image', value);
+          } else if (key !== 'image_preview') { // No enviar image_preview
+            formDataToSend.append(key, value.toString());
+          }
+        }
+      });
+
+      const newRestaurant = await apiService.createRestaurant(formDataToSend);
       setRestaurant(newRestaurant);
       setShowCreateForm(false);
       toast.success('Restaurante creado exitosamente');
