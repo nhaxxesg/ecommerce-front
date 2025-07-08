@@ -1,7 +1,7 @@
 import type { User, Restaurant, MenuItem, Order, LoginResponse, RegisterRequest, CreateOrderRequest, ComplaintRequest } from '../types';
 import { PaginatedResponse } from '../types/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://ecomerce.proyectoinsti.site/api';
 
 class ApiService {
   private getToken(): string | null {
