@@ -18,6 +18,7 @@ import {
   Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 const RestaurantDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -142,11 +143,12 @@ const RestaurantDetail: React.FC = () => {
       {/* Header */}
       <div className="relative">
         <div className="h-64 bg-gradient-to-r from-primary-600 to-primary-800">
-        <img
-            src={restaurant.image_url || 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg'}
-          alt={restaurant.name}
+          <ImageWithFallback
+            src={restaurant.image_url}
+            alt={restaurant.name}
             className="w-full h-full object-cover opacity-50"
-        />
+            fallbackSrc="https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg"
+          />
         </div>
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         
@@ -257,10 +259,11 @@ const RestaurantDetail: React.FC = () => {
                     >
                       <div className="flex flex-col md:flex-row gap-4">
                         <div className="md:w-32 md:h-32 w-full h-48 flex-shrink-0">
-                          <img
-                            src={item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
+                          <ImageWithFallback
+                            src={item.image_url}
                             alt={item.name}
                             className="w-full h-full object-cover rounded-lg"
+                            fallbackSrc="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg"
                           />
                         </div>
                         

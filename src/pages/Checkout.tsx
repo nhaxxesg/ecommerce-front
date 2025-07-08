@@ -14,6 +14,7 @@ import {
 import toast from 'react-hot-toast';
 import { toNumber } from '../lib/utils';
 import { apiService } from '../lib/api';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 const Checkout: React.FC = () => {
   const { user } = useAuth();
@@ -181,10 +182,11 @@ const Checkout: React.FC = () => {
               <div className="space-y-4">
                 {cartState.items.map((item) => (
                   <div key={item.menu_item.id} className="flex items-center space-x-4">
-                    <img
-                      src={item.menu_item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
+                    <ImageWithFallback
+                      src={item.menu_item.image_url}
                       alt={item.menu_item.name}
                       className="w-16 h-16 object-cover rounded-lg"
+                      fallbackSrc="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg"
                     />
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 dark:text-white">

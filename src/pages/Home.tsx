@@ -19,6 +19,7 @@ import {
   Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 const Home: React.FC = () => {
   const { user } = useAuth();
@@ -185,10 +186,11 @@ const Home: React.FC = () => {
               {featuredItems.map((item) => (
                 <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-w-16 aspect-h-9">
-                    <img
-                      src={getImageUrl(item.image_url) || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
+                    <ImageWithFallback
+                      src={getImageUrl(item.image_url)}
                       alt={item.name}
                       className="w-full h-48 object-cover"
+                      fallbackSrc="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg"
                     />
                   </div>
                   <div className="p-4">
@@ -260,10 +262,11 @@ const Home: React.FC = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   <div className="aspect-w-16 aspect-h-9">
-                    <img
-                      src={getImageUrl(restaurant.image_url) || 'https://images.pexels.com/photos/6267/menu-restaurant-vintage-table.jpg'}
+                    <ImageWithFallback
+                      src={getImageUrl(restaurant.image_url)}
                       alt={restaurant.name}
                       className="w-full h-48 object-cover"
+                      fallbackSrc="https://images.pexels.com/photos/6267/menu-restaurant-vintage-table.jpg"
                     />
                   </div>
                   <div className="p-4">
