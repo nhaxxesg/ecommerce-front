@@ -1,4 +1,5 @@
-import { User, Restaurant, MenuItem, Order, LoginResponse, RegisterRequest, CreateOrderRequest, ComplaintRequest } from '../types';
+import type { User, Restaurant, MenuItem, Order, LoginResponse, RegisterRequest, CreateOrderRequest, ComplaintRequest } from '../types';
+import { PaginatedResponse } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -138,7 +139,7 @@ class ApiService {
 
   // Menu endpoints
   async getMenuItems(restaurantId: string): Promise<MenuItem[]> {
-    const response = await fetch(`${API_URL}/restaurants/${restaurantId}/menu`, {
+    const response = await fetch(`${API_URL}/restaurants/${restaurantId}/foods`, {
       headers: this.getHeaders(),
     });
     return this.handleResponse(response);
@@ -181,8 +182,8 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  // Alias para compatibilidad
   async updateFood(id: string, formData: FormData): Promise<MenuItem> {
+    // Para Laravel, necesitamos enviar _method=PUT para simular un PUT con FormData
     formData.append('_method', 'PUT');
     
     const headers: HeadersInit = {
@@ -190,7 +191,7 @@ class ApiService {
     };
 
     const response = await fetch(`${API_URL}/foods/${id}`, {
-      method: 'POST',
+      method: 'POST', // Usamos POST pero Laravel lo interpretará como PUT
       headers,
       body: formData,
     });
@@ -233,7 +234,11 @@ class ApiService {
 
   // Alias para compatibilidad
   async getRestaurantOrders(): Promise<Order[]> {
-    return this.getOrders();
+    const response = await fetch(`${API_URL}/restaurant-orders`, {
+      headers: this.getHeaders(),
+    });
+    const data = await this.handleResponse<PaginatedResponse<Order>>(response);
+    return data.data || [];
   }
 
   async createOrder(orderData: CreateOrderRequest): Promise<Order> {

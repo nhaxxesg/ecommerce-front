@@ -1,3 +1,6 @@
+export * from './database';
+export * from './api';
+
 export interface User {
   id: string;
   name: string;
@@ -107,4 +110,12 @@ export interface CreateOrderRequest {
     food_id: string;
     quantity: number;
   }[];
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Restaurant, MenuItem, Order } from '../types';
 import { apiService } from '../lib/api';
-import { formatPrice, toNumber } from '../lib/utils';
+import { formatPrice, toNumber, getImageUrl } from '../lib/utils';
 import { 
   Plus, 
   Edit, 
@@ -110,8 +110,8 @@ const RestaurantDashboard: React.FC = () => {
           apiService.getRestaurantOrders()
         ]);
         
-        setMenuItems(menuData);
-        setOrders(ordersData);
+        setMenuItems(Array.isArray(menuData) ? menuData : []);
+        setOrders(Array.isArray(ordersData) ? ordersData : []);
       } else {
         // No tiene restaurantes configurados
         setRestaurant(null);
@@ -121,6 +121,8 @@ const RestaurantDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching restaurant data:', error);
       toast.error('Error al cargar los datos del restaurante');
+      setMenuItems([]);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -143,6 +145,21 @@ const RestaurantDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditFood = (food: MenuItem) => {
+    setEditingFood(food); // Asegurarnos de establecer el food que estamos editando
+    setFoodFormData({
+      name: food.name,
+      description: food.description || '',
+      price: food.price.toString(),
+      category: food.category || '',
+      image_url: food.image_url || '',
+      preparation_time: food.preparation_time?.toString() || '30',
+      image: null,
+      image_preview: getImageUrl(food.image_url) || ''
+    });
+    setShowFoodForm(true);
   };
 
   const handleCreateFood = async (e: React.FormEvent) => {
@@ -194,20 +211,6 @@ const RestaurantDashboard: React.FC = () => {
     }
   };
 
-  const handleEditFood = (food: MenuItem) => {
-    setFoodFormData({
-      name: food.name,
-      description: food.description || '',
-      price: food.price.toString(),
-      category: food.category || '',
-      image_url: food.image_url || '',
-      preparation_time: food.preparation_time?.toString() || '30',
-      image: undefined, // Cambiar a undefined en lugar de food.image
-      image_preview: food.image_url || ''
-    });
-    setShowFoodForm(true);
-  };
-
   const handleDeleteFood = async (foodId: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
     
@@ -244,9 +247,11 @@ const RestaurantDashboard: React.FC = () => {
   };
 
   const getTodayOrders = () => {
+    if (!Array.isArray(orders)) return [];
+    
     const today = new Date().toISOString().split('T')[0];
     return orders.filter(order => 
-      order.created_at.split('T')[0] === today
+      order?.created_at?.split('T')[0] === today
     );
   };
 
@@ -643,12 +648,12 @@ const RestaurantDashboard: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {menuItems.map((item) => (
-                    <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div key={item.id} className="bg-gray-800 rounded-lg p-4 relative">
                       {item.image_url && (
                         <img 
-                          src={item.image_url} 
-                          alt={item.name}
-                          className="w-full h-32 object-cover rounded-lg mb-3"
+                          src={getImageUrl(item.image_url)} 
+                          alt={item.name} 
+                          className="w-full h-48 object-cover rounded-lg mb-4"
                         />
                       )}
                       <div className="flex justify-between items-start mb-2">
