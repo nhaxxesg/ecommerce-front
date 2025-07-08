@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -15,6 +16,7 @@ import Checkout from './pages/Checkout';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFailure from './pages/PaymentFailure';
 import PaymentPending from './pages/PaymentPending';
+import ComplaintBook from './pages/ComplaintBook';
 
 function App() {
   return (
@@ -22,14 +24,15 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <Router>
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
               <Navbar />
-              <main className="pt-16">
+              <main className="pt-16 flex-grow">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
                   <Route path="/restaurant/:id" element={<RestaurantDetail />} />
+                  <Route path="/complaints" element={<ComplaintBook />} />
                   <Route path="/checkout" element={
                     <ProtectedRoute userType="client">
                       <Checkout />
@@ -56,6 +59,7 @@ function App() {
                   <Route path="/payment/pending" element={<PaymentPending />} />
                 </Routes>
               </main>
+              <Footer />
               <Toaster
                 position="top-right"
                 toastOptions={{

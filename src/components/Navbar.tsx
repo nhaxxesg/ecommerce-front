@@ -13,7 +13,8 @@ import {
   User,
   LogOut,
   Home,
-  LayoutDashboard
+  LayoutDashboard,
+  Book
 } from 'lucide-react';
 
 const Navbar: React.FC = () => {
@@ -57,6 +58,14 @@ const Navbar: React.FC = () => {
             >
               <Home className="h-4 w-4" />
               <span>Inicio</span>
+            </Link>
+
+            <Link 
+              to="/complaints" 
+              className="flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+            >
+              <Book className="h-4 w-4" />
+              <span>Libro de Reclamaciones</span>
             </Link>
 
             {user && (
@@ -175,6 +184,15 @@ const Navbar: React.FC = () => {
               >
                 <Home className="h-4 w-4" />
                 <span>Inicio</span>
+              </Link>
+
+              <Link 
+                to="/complaints"
+                className="flex items-center space-x-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Book className="h-4 w-4" />
+                <span>Libro de Reclamaciones</span>
               </Link>
 
               {user && (

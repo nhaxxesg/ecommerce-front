@@ -1,44 +1,78 @@
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'client' | 'owner';
+}
+
+export interface LoginResponse {
+  access_token: string;
+  user: User;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  role: 'client' | 'owner';
+  address?: string;
+}
+
 export interface Restaurant {
-    id: string;
-    owner_id: string;
-    name: string;
-    description?: string;
-    cuisine_type: string;
-    address: string;
-    phone: string;
-    email?: string;
-    opening_time: string;
-    closing_time: string;
-    image_url?: string;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-    owner?: User;
-    foods?: MenuItem[];
+  id: string;
+  name: string;
+  description: string;
+  address: string;
+  phone: string;
+  image_url?: string;
+  owner_id: string;
+  opening_time?: string;
+  closing_time?: string;
+  opening_hours?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MenuItem {
-    id: string;
-    restaurant_id: string;
-    name: string;
-    description?: string;
-    price: number;
-    category?: string;
-    image_url?: string;
-    is_available: boolean;
-    preparation_time?: number;
-    created_at: string;
-    updated_at: string;
-    restaurant?: Restaurant;
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image_url?: string;
+  restaurant_id: string;
+  category: string;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface User {
-    id: string;
+export interface CartItem {
+  menuItem: MenuItem;
+  quantity: number;
+  restaurant: Restaurant;
+}
+
+export interface Order {
+  id: string;
+  user_id: string;
+  restaurant_id: string;
+  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  total: number;
+  items: {
+    menu_item_id: string;
+    quantity: number;
+    price: number;
     name: string;
-    email: string;
-    role: 'client' | 'owner';
-    phone?: string;
-    address?: string;
-    created_at: string;
-    updated_at: string;
+  }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOrderRequest {
+  restaurant_id: string;
+  items: {
+    menu_item_id: string;
+    quantity: number;
+  }[];
 } 
