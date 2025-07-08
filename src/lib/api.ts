@@ -122,13 +122,9 @@ class ApiService {
   }
 
   async createRestaurant(restaurantData: FormData): Promise<Restaurant> {
-    const headers: HeadersInit = {
-      'Authorization': this.getAuthHeader(),
-    };
-
     const response = await fetch(`${API_URL}/restaurants`, {
       method: 'POST',
-      headers,
+      headers: this.getHeaders(),
       body: restaurantData,
       credentials: 'include'
     });
