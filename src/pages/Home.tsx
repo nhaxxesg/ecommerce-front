@@ -4,7 +4,7 @@ import { Restaurant, MenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { apiService } from '../lib/api';
-import { formatPrice } from '../lib/utils';
+import { formatPrice, getImageUrl } from '../lib/utils';
 import { 
   Star, 
   Clock, 
@@ -14,7 +14,9 @@ import {
   Filter,
   ChefHat,
   Truck,
-  Store
+  Store,
+  DollarSign,
+  Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -40,26 +42,34 @@ const Home: React.FC = () => {
       const safeRestaurantsData = Array.isArray(restaurantsData) ? restaurantsData : [];
       setRestaurants(safeRestaurantsData);
       
-      // Cargar algunos platos destacados de los restaurantes
+      // Cargar platos destacados de todos los restaurantes
       if (safeRestaurantsData.length > 0) {
-        const featuredItemsPromises = safeRestaurantsData.slice(0, 3).map(async (restaurant) => {
+        const featuredItemsPromises = safeRestaurantsData.map(async (restaurant) => {
           try {
             const foods = await apiService.getRestaurantFoods(restaurant.id);
-            // Tomar los primeros 2 platos de cada restaurante
+            // Tomar los platos disponibles y con mejor precio
             const safeFoods = Array.isArray(foods) ? foods : [];
-            return safeFoods.slice(0, 2).map(food => ({
-              ...food,
-              restaurant
-            }));
-    } catch (error) {
+            return safeFoods
+              .filter(food => food.is_available)
+              .sort((a, b) => b.price - a.price)
+              .slice(0, 2)
+              .map(food => ({
+                ...food,
+                restaurant
+              }));
+          } catch (error) {
             console.error(`Error loading foods for restaurant ${restaurant.id}:`, error);
             return [];
-    }
+          }
         });
 
         const featuredResults = await Promise.all(featuredItemsPromises);
         const allFeaturedItems = featuredResults.flat();
-        setFeaturedItems(allFeaturedItems);
+        // Ordenar por precio y tomar los 6 más relevantes
+        setFeaturedItems(allFeaturedItems
+          .sort((a, b) => b.price - a.price)
+          .slice(0, 6)
+        );
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -69,16 +79,14 @@ const Home: React.FC = () => {
     }
   };
 
-  const filteredRestaurants = Array.isArray(restaurants) ? restaurants.filter(restaurant => {
+  const filteredRestaurants = restaurants.filter(restaurant => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          restaurant.cuisine_type?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCuisine = !selectedCuisine || restaurant.cuisine_type === selectedCuisine;
     return matchesSearch && matchesCuisine && restaurant.is_active;
-  }) : [];
+  });
 
-  const cuisineTypes = Array.isArray(restaurants) 
-    ? [...new Set(restaurants.map(r => r.cuisine_type).filter(Boolean))]
-    : [];
+  const cuisineTypes = [...new Set(restaurants.map(r => r.cuisine_type).filter(Boolean))];
 
   const handleAddToCart = (menuItem: MenuItem, restaurant: Restaurant) => {
     if (!user) {
@@ -90,9 +98,8 @@ const Home: React.FC = () => {
       return;
     }
     addItem(menuItem, restaurant);
+    toast.success('Producto agregado al carrito');
   };
-
-
 
   const getOpeningHours = (restaurant: Restaurant) => {
     if (restaurant.opening_time && restaurant.closing_time) {
@@ -123,7 +130,7 @@ const Home: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-              <ChefHat className="h-5 w-5 mr-2" />
+              <Store className="h-5 w-5 mr-2" />
               <span>Restaurantes locales</span>
             </div>
             <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
@@ -179,7 +186,7 @@ const Home: React.FC = () => {
                 <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-w-16 aspect-h-9">
                     <img
-                      src={item.image_url || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
+                      src={getImageUrl(item.image_url) || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'}
                       alt={item.name}
                       className="w-full h-48 object-cover"
                     />
@@ -187,8 +194,8 @@ const Home: React.FC = () => {
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {item.name}
-                    </h3>
+                        {item.name}
+                      </h3>
                       <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
                         {formatPrice(item.price)}
                       </span>
@@ -249,48 +256,44 @@ const Home: React.FC = () => {
               {filteredRestaurants.map((restaurant) => (
                 <Link
                   key={restaurant.id}
-                  to={`/restaurant/${restaurant.id}`}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow group"
+                  to={`/restaurants/${restaurant.id}`}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   <div className="aspect-w-16 aspect-h-9">
                     <img
-                      src={restaurant.image_url || 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg'}
+                      src={getImageUrl(restaurant.image_url) || 'https://images.pexels.com/photos/6267/menu-restaurant-vintage-table.jpg'}
                       alt={restaurant.name}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-48 object-cover"
                     />
                   </div>
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {restaurant.name}
-                      </h3>
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">4.5</span>
-                      </div>
-                    </div>
-                    
+                  <div className="p-4">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                      {restaurant.name}
+                    </h3>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
                       {restaurant.description}
                     </p>
-                    
                     <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center">
                         <ChefHat className="h-4 w-4 mr-2" />
                         <span>{restaurant.cuisine_type}</span>
                       </div>
                       <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>{getOpeningHours(restaurant)}</span>
+                      </div>
+                      <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-2" />
                         <span>{restaurant.address}</span>
                       </div>
                       <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>{getOpeningHours(restaurant)}</span>
+                        <Phone className="h-4 w-4 mr-2" />
+                        <span>{restaurant.phone}</span>
                       </div>
-                      {restaurant.delivery_fee && (
+                      {restaurant.delivery_fee !== undefined && (
                         <div className="flex items-center">
-                          <Truck className="h-4 w-4 mr-2" />
-                          <span>Delivery {formatPrice(restaurant.delivery_fee)}</span>
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          <span>Delivery: {formatPrice(restaurant.delivery_fee)}</span>
                         </div>
                       )}
                     </div>

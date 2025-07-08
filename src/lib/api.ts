@@ -1,5 +1,5 @@
 import type { User, Restaurant, MenuItem, Order, LoginResponse, RegisterRequest, CreateOrderRequest, ComplaintRequest } from '../types';
-import { PaginatedResponse } from '../types';
+import { PaginatedResponse } from '../types/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -44,6 +44,8 @@ class ApiService {
         const errorData = await response.json();
         if (errorData.message) {
           errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
         }
       } catch {
         // Si no se puede parsear el JSON, usar el mensaje por defecto
@@ -52,7 +54,8 @@ class ApiService {
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    const data = await response.json();
+    return data.data || data;
   }
 
   // Auth endpoints
@@ -61,6 +64,7 @@ class ApiService {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ email, password }),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -70,6 +74,7 @@ class ApiService {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(userData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -78,6 +83,7 @@ class ApiService {
     const response = await fetch(`${API_URL}/logout`, {
       method: 'POST',
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -85,6 +91,7 @@ class ApiService {
   async getCurrentUser(): Promise<User> {
     const response = await fetch(`${API_URL}/user`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -93,6 +100,7 @@ class ApiService {
   async getRestaurants(): Promise<Restaurant[]> {
     const response = await fetch(`${API_URL}/restaurants`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -100,6 +108,7 @@ class ApiService {
   async getRestaurant(id: string): Promise<Restaurant> {
     const response = await fetch(`${API_URL}/restaurants/${id}`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -107,6 +116,7 @@ class ApiService {
   async getMyRestaurants(): Promise<Restaurant[]> {
     const response = await fetch(`${API_URL}/my-restaurants`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -116,6 +126,7 @@ class ApiService {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(restaurantData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -125,6 +136,7 @@ class ApiService {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify(restaurantData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -133,6 +145,7 @@ class ApiService {
     const response = await fetch(`${API_URL}/restaurants/${id}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -141,6 +154,7 @@ class ApiService {
   async getMenuItems(restaurantId: string): Promise<MenuItem[]> {
     const response = await fetch(`${API_URL}/restaurants/${restaurantId}/foods`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -155,6 +169,7 @@ class ApiService {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(menuItemData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -169,6 +184,7 @@ class ApiService {
       method: 'POST',
       headers,
       body: formData,
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -178,6 +194,7 @@ class ApiService {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify(menuItemData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -194,6 +211,7 @@ class ApiService {
       method: 'POST', // Usamos POST pero Laravel lo interpretará como PUT
       headers,
       body: formData,
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -202,6 +220,7 @@ class ApiService {
     const response = await fetch(`${API_URL}/foods/${id}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -215,6 +234,7 @@ class ApiService {
     const response = await fetch(`${API_URL}/foods/${id}/toggle-availability`, {
       method: 'PATCH',
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -228,6 +248,7 @@ class ApiService {
   async getOrders(): Promise<Order[]> {
     const response = await fetch(`${API_URL}/orders`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -236,6 +257,7 @@ class ApiService {
   async getRestaurantOrders(): Promise<Order[]> {
     const response = await fetch(`${API_URL}/restaurant-orders`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     const data = await this.handleResponse<PaginatedResponse<Order>>(response);
     return data.data || [];
@@ -246,6 +268,7 @@ class ApiService {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(orderData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -253,6 +276,7 @@ class ApiService {
   async getOrder(id: string): Promise<Order> {
     const response = await fetch(`${API_URL}/orders/${id}`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -262,15 +286,16 @@ class ApiService {
       method: 'PATCH',
       headers: this.getHeaders(),
       body: JSON.stringify({ status }),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
 
-  // Payment endpoints
   async createPayment(orderId: string): Promise<{ init_point: string }> {
     const response = await fetch(`${API_URL}/orders/${orderId}/payment`, {
       method: 'POST',
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -278,6 +303,7 @@ class ApiService {
   async getMercadoPagoConfig(): Promise<{ public_key: string }> {
     const response = await fetch(`${API_URL}/mercadopago/config`, {
       headers: this.getHeaders(),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
@@ -287,22 +313,27 @@ class ApiService {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ items }),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
 
-  // Alias para compatibilidad
   async createPaymentPreference(items: any[]): Promise<{ init_point: string }> {
-    const result = await this.createPreference(items);
-    return { init_point: result.init_point };
+    const response = await fetch(`${API_URL}/mercadopago/create-preference`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ items }),
+      credentials: 'include'
+    });
+    return this.handleResponse(response);
   }
 
-  // Complaint Book endpoints
   async createComplaint(complaintData: ComplaintRequest): Promise<void> {
-    const response = await fetch(`${API_URL}/complaint-book`, {
+    const response = await fetch(`${API_URL}/complaints`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(complaintData),
+      credentials: 'include'
     });
     return this.handleResponse(response);
   }
