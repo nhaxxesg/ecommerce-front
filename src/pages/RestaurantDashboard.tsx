@@ -195,7 +195,6 @@ const RestaurantDashboard: React.FC = () => {
   };
 
   const handleEditFood = (food: MenuItem) => {
-    setEditingFood(food);
     setFoodFormData({
       name: food.name,
       description: food.description || '',
@@ -203,7 +202,7 @@ const RestaurantDashboard: React.FC = () => {
       category: food.category || '',
       image_url: food.image_url || '',
       preparation_time: food.preparation_time?.toString() || '30',
-      image: food.image,
+      image: undefined, // Cambiar a undefined en lugar de food.image
       image_preview: food.image_url || ''
     });
     setShowFoodForm(true);

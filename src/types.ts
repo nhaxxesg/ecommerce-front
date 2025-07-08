@@ -3,6 +3,8 @@ export interface User {
   name: string;
   email: string;
   role: 'client' | 'owner';
+  user_type?: 'restaurant' | 'client';
+  address?: string;
 }
 
 export interface LoginResponse {
@@ -32,6 +34,11 @@ export interface Restaurant {
   opening_hours?: string;
   created_at: string;
   updated_at: string;
+  cuisine_type?: string;
+  delivery_fee?: number;
+  minimum_order?: number;
+  is_active?: boolean;
+  email?: string;
 }
 
 export interface MenuItem {
@@ -45,34 +52,65 @@ export interface MenuItem {
   is_available: boolean;
   created_at: string;
   updated_at: string;
+  preparation_time?: number;
+  image?: string;
 }
 
 export interface CartItem {
+  menu_item: MenuItem;
   menuItem: MenuItem;
   quantity: number;
   restaurant: Restaurant;
+}
+
+export interface OrderItem {
+  id?: string;
+  order_id?: string;
+  menu_item_id: string;
+  quantity: number;
+  price: number;
+  unit_price?: number;
+  total_price?: number;
+  subtotal?: number;
+  name: string;
+  menu_item?: MenuItem;
+  food?: MenuItem;
 }
 
 export interface Order {
   id: string;
   user_id: string;
   restaurant_id: string;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   total: number;
-  items: {
-    menu_item_id: string;
-    quantity: number;
-    price: number;
-    name: string;
-  }[];
+  total_amount?: number;
+  items: OrderItem[];
+  order_items?: OrderItem[];
   created_at: string;
   updated_at: string;
+  delivery_address?: string;
+  notes?: string;
+  payment_method?: string;
+  payment_status?: 'pending' | 'paid' | 'failed';
+  user?: User;
+  restaurant?: Restaurant;
 }
 
 export interface CreateOrderRequest {
   restaurant_id: string;
+  delivery_address?: string;
+  notes?: string;
+  payment_method?: string;
   items: {
     menu_item_id: string;
+    food_id?: string;
     quantity: number;
   }[];
+}
+
+export interface ComplaintRequest {
+  type: 'reclamo' | 'queja';
+  consumer_phone?: string;
+  product_description: string;
+  complaint_detail: string;
 } 

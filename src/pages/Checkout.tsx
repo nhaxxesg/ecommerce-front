@@ -96,7 +96,7 @@ const Checkout: React.FC = () => {
         notes: notes.trim() || undefined,
         payment_method: paymentMethod,
         items: cartState.items.map(item => ({
-          food_id: item.menu_item.id,
+          menu_item_id: item.menu_item.id,
           quantity: item.quantity
         }))
       };

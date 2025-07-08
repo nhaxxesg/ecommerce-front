@@ -44,7 +44,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       }
 
       const existingItemIndex = state.items.findIndex(
-        item => item.menu_item.id === menuItem.id
+        item => item.menuItem.id === menuItem.id
       );
 
       let newItems: CartItem[];
@@ -55,11 +55,11 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
             : item
         );
       } else {
-        newItems = [...state.items, { menu_item: menuItem, quantity: 1, restaurant }];
+        newItems = [...state.items, { menuItem: menuItem, menu_item: menuItem, quantity: 1, restaurant }];
       }
 
       const total = newItems.reduce(
-        (sum, item) => sum + toNumber(item.menu_item.price) * item.quantity,
+        (sum, item) => sum + toNumber(item.menuItem.price) * item.quantity,
         0
       );
 
@@ -71,9 +71,9 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     }
 
     case 'REMOVE_ITEM': {
-      const newItems = state.items.filter(item => item.menu_item.id !== action.payload);
+      const newItems = state.items.filter(item => item.menuItem.id !== action.payload);
       const total = newItems.reduce(
-        (sum, item) => sum + toNumber(item.menu_item.price) * item.quantity,
+        (sum, item) => sum + toNumber(item.menuItem.price) * item.quantity,
         0
       );
 
@@ -92,13 +92,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       }
 
       const newItems = state.items.map(item =>
-        item.menu_item.id === menuItemId
+        item.menuItem.id === menuItemId
           ? { ...item, quantity }
           : item
       );
 
       const total = newItems.reduce(
-        (sum, item) => sum + toNumber(item.menu_item.price) * item.quantity,
+        (sum, item) => sum + toNumber(item.menuItem.price) * item.quantity,
         0
       );
 
@@ -129,7 +129,7 @@ const loadCartFromStorage = (): CartState => {
       const parsedCart = JSON.parse(savedCart);
       // Recalcular el total por si acaso
       const total = parsedCart.items.reduce(
-        (sum: number, item: CartItem) => sum + toNumber(item.menu_item.price) * item.quantity,
+        (sum: number, item: CartItem) => sum + toNumber(item.menuItem.price) * item.quantity,
         0
       );
       return { ...parsedCart, total };

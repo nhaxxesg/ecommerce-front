@@ -15,7 +15,12 @@ const complaintSchema = z.object({
   complaint_detail: z.string().min(20, 'El detalle debe tener al menos 20 caracteres'),
 });
 
-type ComplaintFormData = z.infer<typeof complaintSchema>;
+type ComplaintFormData = {
+  type: 'reclamo' | 'queja';
+  consumer_phone?: string;
+  product_description: string;
+  complaint_detail: string;
+};
 
 const ComplaintBook: React.FC = () => {
   const { user } = useAuth();
@@ -81,6 +86,7 @@ const ComplaintBook: React.FC = () => {
               </label>
               <select
                 {...register('type')}
+                defaultValue="reclamo"
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="reclamo">Reclamo</option>
