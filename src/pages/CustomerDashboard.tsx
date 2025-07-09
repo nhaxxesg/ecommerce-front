@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Order } from '../types';
 import { Clock, Package, CheckCircle, XCircle, MapPin, Phone, RefreshCw } from 'lucide-react';
@@ -213,12 +214,12 @@ const CustomerDashboard: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Explora nuestros restaurantes y haz tu primer pedido
             </p>
-            <a
-              href="/"
+            <Link 
+              to="/" 
               className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors btn-hover inline-block"
             >
-              Explorar Restaurantes
-            </a>
+              <span>Explorar Restaurantes</span>
+            </Link>
           </div>
         ) : (
           <div className="space-y-6">

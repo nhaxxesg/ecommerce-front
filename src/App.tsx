@@ -31,7 +31,7 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
-                  <Route path="/restaurant/:id" element={<RestaurantDetail />} />
+                  <Route path="/restaurants/:id" element={<RestaurantDetail />} />
                   <Route path="/complaints" element={<ComplaintBook />} />
                   <Route path="/checkout" element={
                     <ProtectedRoute userType="client">

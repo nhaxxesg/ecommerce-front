@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { toNumber } from '../lib/utils';
 import { apiService } from '../lib/api';
 import ImageWithFallback from '../components/ImageWithFallback';
+import { Link } from 'react-router-dom';
 
 const Checkout: React.FC = () => {
   const { user } = useAuth();
@@ -153,12 +154,12 @@ const Checkout: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Explora nuestros restaurantes y agrega productos a tu carrito
           </p>
-          <a
-            href="/"
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors btn-hover"
+          <Link 
+            to="/" 
+            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors btn-hover inline-block"
           >
-            Explorar Restaurantes
-          </a>
+            <span>Explorar Restaurantes</span>
+          </Link>
         </div>
       </div>
     );
