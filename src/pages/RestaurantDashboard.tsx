@@ -279,7 +279,33 @@ const RestaurantDashboard: React.FC = () => {
 
     try {
       setLoading(true);
-      await apiService.updateRestaurant(restaurant.id, restaurantSettings);
+      
+      // CORREGIDO: Usar FormData si hay una imagen, JSON si no hay imagen
+      if (restaurantSettings.image) {
+        // Crear FormData para manejar archivo de imagen
+        const formDataToSend = new FormData();
+        
+        // Agregar todos los campos al FormData (excepto image_preview)
+        Object.entries(restaurantSettings).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && key !== 'image_preview') {
+            if (key === 'image' && value instanceof File) {
+              formDataToSend.append('image', value);
+            } else if (key !== 'image') {
+              formDataToSend.append(key, value.toString());
+            }
+          }
+        });
+        
+        await apiService.updateRestaurant(restaurant.id, formDataToSend);
+      } else {
+        // Sin imagen: usar JSON normal
+        const dataToSend = { ...restaurantSettings };
+        delete dataToSend.image;
+        delete dataToSend.image_preview;
+        
+        await apiService.updateRestaurant(restaurant.id, dataToSend);
+      }
+      
       toast.success('Configuración actualizada exitosamente');
       setIsEditingSettings(false);
       await fetchRestaurantData();

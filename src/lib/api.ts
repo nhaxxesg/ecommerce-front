@@ -3,6 +3,15 @@ import { PaginatedResponse } from '../types/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ecomerce.proyectoinsti.site/api';
 
+/**
+ * API SERVICE - CORREGIDO
+ * 
+ * Errores corregidos:
+ * 1. Cambio de /user a /me para coincidir con backend
+ * 2. Headers correctos para FormData (sin Content-Type fijo)
+ * 3. Soporte para method spoofing (_method=PUT) en actualización con archivos
+ * 4. Manejo diferenciado de JSON vs FormData en actualizaciones
+ */
 class ApiService {
   private getToken(): string | null {
     return localStorage.getItem('auth_token');
@@ -88,8 +97,9 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // CORREGIDO: Cambio de /user a /me para coincidir con el backend
   async getCurrentUser(): Promise<User> {
-    const response = await fetch(`${API_URL}/user`, {
+    const response = await fetch(`${API_URL}/me`, {
       headers: this.getHeaders(),
       credentials: 'include'
     });
@@ -121,24 +131,59 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // CORREGIDO: Headers apropiados para FormData
   async createRestaurant(restaurantData: FormData): Promise<Restaurant> {
+    // Para FormData, no incluir Content-Type - el navegador lo detecta automáticamente
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+    };
+
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_URL}/restaurants`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: restaurantData,
       credentials: 'include'
     });
     return this.handleResponse(response);
   }
 
-  async updateRestaurant(id: string, restaurantData: Partial<Restaurant>): Promise<Restaurant> {
-    const response = await fetch(`${API_URL}/restaurants/${id}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify(restaurantData),
-      credentials: 'include'
-    });
-    return this.handleResponse(response);
+  // CORREGIDO: Método para actualizar restaurante con soporte para archivos
+  async updateRestaurant(id: string, restaurantData: FormData | Partial<Restaurant>): Promise<Restaurant> {
+    if (restaurantData instanceof FormData) {
+      // Para archivos: usar POST con _method=PUT
+      restaurantData.append('_method', 'PUT');
+      
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
+      };
+
+      const token = this.getToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_URL}/restaurants/${id}`, {
+        method: 'POST', // Laravel interpreta esto como PUT gracias a _method
+        headers,
+        body: restaurantData,
+        credentials: 'include'
+      });
+      return this.handleResponse(response);
+    } else {
+      // Para datos JSON sin archivos
+      const response = await fetch(`${API_URL}/restaurants/${id}`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify(restaurantData),
+        credentials: 'include'
+      });
+      return this.handleResponse(response);
+    }
   }
 
   async deleteRestaurant(id: string): Promise<void> {
