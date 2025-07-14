@@ -373,8 +373,9 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // CORREGIDO: Ruta cambiada de /complaints a /complaint-book para coincidir con backend
   async createComplaint(complaintData: ComplaintRequest): Promise<void> {
-    const response = await fetch(`${API_URL}/complaints`, {
+    const response = await fetch(`${API_URL}/complaint-book`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(complaintData),
