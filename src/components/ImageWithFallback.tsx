@@ -14,39 +14,46 @@ const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
   className = '',
   fallbackSrc = 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg'
 }) => {
-  const [imageError, setImageError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
+  const [hasAttemptedOriginal, setHasAttemptedOriginal] = useState(false);
 
   useEffect(() => {
-    // Si no hay src o ya hubo error, usar fallback directamente
-    if (!src || imageError) {
+    // Reset states when src changes
+    setHasAttemptedOriginal(false);
+    setIsLoading(false);
+    
+    // Si no hay src, usar fallback directamente
+    if (!src) {
       setCurrentSrc(fallbackSrc);
-      setIsLoading(false);
       return;
     }
 
-    // Si hay src y no ha habido error, intentar cargar la imagen original
-    setCurrentSrc(src);
-    setIsLoading(true);
-    setImageError(false);
-  }, [src, fallbackSrc, imageError]);
+    // Si hay src y no hemos intentado cargarla aún, intentar una sola vez
+    if (src && !hasAttemptedOriginal) {
+      setCurrentSrc(src);
+      setIsLoading(true);
+      setHasAttemptedOriginal(true);
+    }
+  }, [src, fallbackSrc]); // Removido imageError de las dependencias
 
   const handleImageLoad = () => {
     setIsLoading(false);
-    setImageError(false);
   };
 
   const handleImageError = () => {
     setIsLoading(false);
-    setImageError(true);
-    // Una vez que falla, cambiar a la imagen por defecto
+    // Una vez que falla, cambiar definitivamente a la imagen por defecto
+    // y no volver a intentar cargar la original
     setCurrentSrc(fallbackSrc);
   };
 
+  // Determinar si mostrar el placeholder de error
+  const shouldShowErrorPlaceholder = currentSrc === fallbackSrc && src && hasAttemptedOriginal;
+
   return (
     <div className={`relative ${className}`}>
-      {isLoading && currentSrc === src && (
+      {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-lg">
           <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
         </div>
@@ -55,12 +62,12 @@ const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
       <img
         src={currentSrc || fallbackSrc}
         alt={alt}
-        className={`${className} ${isLoading && currentSrc === src ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+        className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
         onLoad={handleImageLoad}
         onError={handleImageError}
       />
       
-      {imageError && currentSrc === fallbackSrc && (
+      {shouldShowErrorPlaceholder && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-lg">
           <div className="text-center">
             <Image className="h-8 w-8 mx-auto text-gray-400 mb-2" />
